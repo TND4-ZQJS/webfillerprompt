@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Prompt Generator for Web Forms</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--accent:#007aff;--muted:#666;}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;margin:18px;background:var(--bg);color:#111}
+  main{max-width:980px;margin:0 auto;background:var(--card);padding:18px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.06)}
+  h1{margin-top:0;font-size:1.25rem}
+  h2{font-size:1rem;border-bottom:1px solid #eee;padding-bottom:6px;}
+  .section{background:#fbfbfd;border:1px solid #eee;padding:12px;border-radius:8px;margin:12px 0}
+  label{display:block;margin:8px 0;font-size:0.95rem}
+  input[type=text],input[type=email],input[type=number],input[type=tel],select,textarea{
+    width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-top:6px;font-size:1rem;
+  }
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
+  .row > label{flex:1;min-width:150px;}
+  .muted{color:var(--muted);font-size:0.85rem}
+  button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+  button.secondary{background:#999}
+  .field-group{border:1px dashed #ccc;padding:8px;margin:8px 0;border-radius:6px;position:relative;}
+  .field-group-remove{position:absolute;top:4px;right:4px;font-size:0.7rem;background:red;color:#fff;border:none;padding:2px 6px;border-radius:4px;cursor:pointer;}
+  textarea#promptOutput{width:100%;height:400px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;}
+</style>
+</head>
+<body>
+<main>
+  <h1>AI Prompt Generator for Web Forms</h1>
+  <p class="muted">Fill out the details below to generate a structured prompt for me to create a new web form filler.</p>
+
+  <section class="section">
+    <h2>New Form Details</h2>
+    <label>New Form Title
+      <input type="text" id="formTitle" placeholder="e.g., Nomination Form Web Filler">
+    </label>
+    <label>Goal / Description
+      <textarea id="formGoal" rows="3" placeholder="e.g., Create a new web form for nomination, using the same styling and core functionality (signature pad, autosave) as the previous form."></textarea>
+    </label>
+    <label>Reference Code Location
+      <input type="text" id="referenceCode" placeholder="e.g., [Paste the full HTML here] or a link to a pastebin.">
+      <small class="muted">I need the full code from your previous form to ensure styling and functionality are replicated correctly.</small>
+    </label>
+  </section>
+
+  <section class="section">
+    <h2>UI Layout & Fields</h2>
+    <div id="sectionsContainer">
+      </div>
+    <button id="addSectionBtn">+ Add New Section</button>
+  </section>
+  
+  <section class="section">
+    <h2>Signature Pad Details</h2>
+    <div id="signaturesContainer">
+        </div>
+    <button id="addSignatureBtn">+ Add Signature Field</button>
+  </section>
+
+  <section class="section">
+    <h2>PDF Mapping</h2>
+    <label>New PDF Filename
+      <input type="text" id="pdfFilename" placeholder="e.g., Nomination_Form_fillable.pdf">
+    </label>
+    <p>Mapping between new HTML IDs and PDF field names:</p>
+    <div id="mappingsContainer">
+      </div>
+    <button id="addMappingBtn">+ Add Mapping</button>
+  </section>
+
+  <section class="section">
+    <h2>Final Prompt</h2>
+    <button id="generatePromptBtn">Generate Prompt</button>
+    <textarea id="promptOutput" readonly placeholder="Your generated prompt will appear here."></textarea>
+  </section>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const sectionsContainer = document.getElementById('sectionsContainer');
+  const signaturesContainer = document.getElementById('signaturesContainer');
+  const mappingsContainer = document.getElementById('mappingsContainer');
+
+  function addSection(sectionTitle = '') {
+    const sectionIndex = sectionsContainer.children.length + 1;
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = 'section';
+    sectionDiv.innerHTML = `
+      <div class="row">
+        <label style="flex:1;">Section Title
+          <input type="text" class="sectionTitle" value="${sectionTitle}" placeholder="e.g., Nominee Details">
+        </label>
+        <button class="secondary" style="height:38px;align-self:end;" onclick="this.closest('.section').remove();">Remove Section</button>
+      </div>
+      <p>Fields:</p>
+      <div class="fieldsContainer"></div>
+      <button type="button" class="addFieldBtn">+ Add Field</button>
+    `;
+    sectionsContainer.appendChild(sectionDiv);
+    
+    sectionDiv.querySelector('.addFieldBtn').addEventListener('click', (e) => {
+      addField(e.target.closest('.section').querySelector('.fieldsContainer'));
+    });
+  }
+
+  function addField(container) {
+    const fieldDiv = document.createElement('div');
+    fieldDiv.className = 'field-group';
+    fieldDiv.innerHTML = `
+      <div class="row">
+        <label>Label<input type="text" class="fieldLabel" placeholder="e.g., Nominee's Name"></label>
+        <label>Input Type
+          <select class="fieldType">
+            <option value="text">Text Input</option>
+            <option value="email">Email</option>
+            <option value="tel">Tel</option>
+            <option value="textarea">Textarea</option>
+            <option value="select">Select (Dropdown)</option>
+            <option value="number">Number</option>
+          </select>
+        </label>
+        <label>Arrangement<input type="text" class="fieldArrangement" placeholder="e.g., in a row with 'NRIC'"></label>
+      </div>
+      <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+    `;
+    container.appendChild(fieldDiv);
+  }
+  
+  function addSignatureField(signatureTitle = ''){
+      const sigDiv = document.createElement('div');
+      sigDiv.className = 'field-group';
+      sigDiv.innerHTML = `
+        <div class="row">
+          <label style="flex:1;">Signature Title
+            <input type="text" class="sigTitle" value="${signatureTitle}" placeholder="e.g., Nominator Signature">
+          </label>
+          <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+        </div>
+      `;
+      signaturesContainer.appendChild(sigDiv);
+  }
+
+  function addMapping(){
+    const mappingDiv = document.createElement('div');
+    mappingDiv.className = 'field-group';
+    mappingDiv.innerHTML = `
+      <div class="row">
+        <label>HTML ID<input type="text" class="htmlId" placeholder="e.g., Nominee_Name"></label>
+        <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., NomineeFullName"></label>
+      </div>
+      <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+    `;
+    mappingsContainer.appendChild(mappingDiv);
+  }
+
+  document.getElementById('addSectionBtn').addEventListener('click', () => addSection());
+  document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
+  document.getElementById('addMappingBtn').addEventListener('click', () => addMapping());
+  
+  document.getElementById('generatePromptBtn').addEventListener('click', () => {
+    let prompt = `**Goal:** ${document.getElementById('formTitle').value}\n`;
+    prompt += `**Core Requirements:**\n- Use the same CSS styling and responsive layout as the reference code.\n- Implement the custom signature pad functionality and autosave logic.\n\n`;
+    prompt += `**Reference Code:** ${document.getElementById('referenceCode').value}\n\n`;
+    prompt += `**New Form Requirements:**\n\n`;
+
+    // UI Layout
+    prompt += `**UI Layout & Fields:**\n`;
+    document.querySelectorAll('#sectionsContainer .section').forEach(sectionDiv => {
+      const title = sectionDiv.querySelector('.sectionTitle').value;
+      prompt += `- **Section: ${title}**\n`;
+      sectionDiv.querySelectorAll('.field-group').forEach(fieldDiv => {
+        const label = fieldDiv.querySelector('.fieldLabel').value;
+        const type = fieldDiv.querySelector('.fieldType').value;
+        const arrangement = fieldDiv.querySelector('.fieldArrangement').value;
+        prompt += `  - **${label}:** ${type} input. `;
+        if (arrangement) prompt += `Arrangement: ${arrangement}.`;
+        prompt += `\n`;
+      });
+      prompt += `\n`;
+    });
+
+    // Signatures
+    prompt += `**Signature Pad Details:**\n`;
+    document.querySelectorAll('#signaturesContainer .field-group').forEach(sigDiv => {
+        const title = sigDiv.querySelector('.sigTitle').value;
+        prompt += `- **${title}**\n`;
+    });
+    prompt += `\n`;
+
+    // PDF Mapping
+    prompt += `**PDF Mapping:**\n`;
+    prompt += `- PDF File: ${document.getElementById('pdfFilename').value}\n`;
+    document.querySelectorAll('#mappingsContainer .field-group').forEach(mapDiv => {
+      const htmlId = mapDiv.querySelector('.htmlId').value;
+      const pdfField = mapDiv.querySelector('.pdfField').value;
+      if (htmlId && pdfField) {
+        prompt += `- \`id="${htmlId}"\` maps to PDF field \`"${pdfField}"\`.\n`;
+      }
+    });
+
+    document.getElementById('promptOutput').value = prompt;
+  });
+
+  // Initial setup with one section, one field, one signature, and one mapping
+  addSection();
+  addField(document.querySelector('.fieldsContainer'));
+  addSignatureField();
+  addMapping();
+});
+</script>
+</body>
+</html>
