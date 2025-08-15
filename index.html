@@ -58,16 +58,12 @@
         </div>
     <button id="addSignatureBtn">+ Add Signature Field</button>
   </section>
-
+  
   <section class="section">
     <h2>PDF Mapping</h2>
     <label>New PDF Filename
       <input type="text" id="pdfFilename" placeholder="e.g., Nomination_Form_fillable.pdf">
     </label>
-    <p>Mapping between new HTML IDs and PDF field names:</p>
-    <div id="mappingsContainer">
-      </div>
-    <button id="addMappingBtn">+ Add Mapping</button>
   </section>
 
   <section class="section">
@@ -81,7 +77,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   const sectionsContainer = document.getElementById('sectionsContainer');
   const signaturesContainer = document.getElementById('signaturesContainer');
-  const mappingsContainer = document.getElementById('mappingsContainer');
+  
+  // PDF Mapping is now done inside the addField function
+  document.getElementById('pdfFilename').closest('section').querySelector('p').style.display = 'none';
 
   function addSection(sectionTitle = '') {
     const sectionIndex = sectionsContainer.children.length + 1;
@@ -111,6 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fieldDiv.innerHTML = `
       <div class="row">
         <label>Label<input type="text" class="fieldLabel" placeholder="e.g., Nominee's Name"></label>
+        <label>HTML ID<input type="text" class="htmlId" placeholder="e.g., nominee_name"></label>
+      </div>
+      <div class="row">
         <label>Input Type
           <select class="fieldType">
             <option value="text">Text Input</option>
@@ -119,9 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <option value="textarea">Textarea</option>
             <option value="select">Select (Dropdown)</option>
             <option value="number">Number</option>
+            <option value="radio">Radio (Group)</option>
+            <option value="credit-card">Credit Card</option>
           </select>
         </label>
-        <label>Arrangement<input type="text" class="fieldArrangement" placeholder="e.g., in a row with 'NRIC'"></label>
+        <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., nomineeFullName"></label>
+      </div>
+      <div class="row">
+        <label style="flex:1;">Arrangement / Options<input type="text" class="fieldArrangement" placeholder="e.g., in a row with 'NRIC' or 'options: Yes, No'"></label>
       </div>
       <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
     `;
@@ -142,22 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
       signaturesContainer.appendChild(sigDiv);
   }
 
-  function addMapping(){
-    const mappingDiv = document.createElement('div');
-    mappingDiv.className = 'field-group';
-    mappingDiv.innerHTML = `
-      <div class="row">
-        <label>HTML ID<input type="text" class="htmlId" placeholder="e.g., Nominee_Name"></label>
-        <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., NomineeFullName"></label>
-      </div>
-      <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
-    `;
-    mappingsContainer.appendChild(mappingDiv);
-  }
-
   document.getElementById('addSectionBtn').addEventListener('click', () => addSection());
   document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
-  document.getElementById('addMappingBtn').addEventListener('click', () => addMapping());
   
   document.getElementById('generatePromptBtn').addEventListener('click', () => {
     let prompt = `**Goal:** ${document.getElementById('formTitle').value}\n`;
@@ -172,10 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
       prompt += `- **Section: ${title}**\n`;
       sectionDiv.querySelectorAll('.field-group').forEach(fieldDiv => {
         const label = fieldDiv.querySelector('.fieldLabel').value;
+        const htmlId = fieldDiv.querySelector('.htmlId').value;
+        const pdfField = fieldDiv.querySelector('.pdfField').value;
         const type = fieldDiv.querySelector('.fieldType').value;
         const arrangement = fieldDiv.querySelector('.fieldArrangement').value;
         prompt += `  - **${label}:** ${type} input. `;
-        if (arrangement) prompt += `Arrangement: ${arrangement}.`;
+        if (arrangement) prompt += `Arrangement / Options: ${arrangement}.`;
+        if (htmlId) prompt += ` HTML ID: \`${htmlId}\`.`;
+        if (pdfField) prompt += ` Maps to PDF field: \`"${pdfField}"\`.`;
         prompt += `\n`;
       });
       prompt += `\n`;
@@ -192,13 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // PDF Mapping
     prompt += `**PDF Mapping:**\n`;
     prompt += `- PDF File: ${document.getElementById('pdfFilename').value}\n`;
-    document.querySelectorAll('#mappingsContainer .field-group').forEach(mapDiv => {
-      const htmlId = mapDiv.querySelector('.htmlId').value;
-      const pdfField = mapDiv.querySelector('.pdfField').value;
-      if (htmlId && pdfField) {
-        prompt += `- \`id="${htmlId}"\` maps to PDF field \`"${pdfField}"\`.\n`;
-      }
-    });
+    // The individual field mappings are now handled in the UI section, so this part of the prompt is now simpler.
+    prompt += `  (Mapping details are included with each field in the "UI Layout & Fields" section above.)\n\n`;
 
     document.getElementById('promptOutput').value = prompt;
   });
@@ -207,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
   addSection();
   addField(document.querySelector('.fieldsContainer'));
   addSignatureField();
-  addMapping();
 });
 </script>
 </body>
