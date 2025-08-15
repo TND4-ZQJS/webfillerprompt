@@ -64,15 +64,13 @@
 
   <section class="section">
     <h2>UI Layout & Fields</h2>
-    <div id="sectionsContainer">
-      </div>
+    <div id="sectionsContainer"></div>
     <button id="addSectionBtn">+ Add New Section</button>
   </section>
   
   <section class="section">
     <h2>Signature Pad Details</h2>
-    <div id="signaturesContainer">
-        </div>
+    <div id="signaturesContainer"></div>
     <button id="addSignatureBtn">+ Add Signature Field</button>
   </section>
   
@@ -94,11 +92,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const sectionsContainer = document.getElementById('sectionsContainer');
   const signaturesContainer = document.getElementById('signaturesContainer');
-  
-  document.getElementById('pdfFilename').closest('section').querySelector('p').style.display = 'none';
 
   function addSection(sectionTitle = '') {
-    const sectionIndex = sectionsContainer.children.length + 1;
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'section';
     sectionDiv.innerHTML = `
@@ -113,10 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
       <button type="button" class="addFieldBtn">+ Add Field</button>
     `;
     sectionsContainer.appendChild(sectionDiv);
-    
+
     sectionDiv.querySelector('.addFieldBtn').addEventListener('click', (e) => {
-      addField(e.target.closest('.section').querySelector('.fieldsContainer'));
+      const container = e.target.closest('.section').querySelector('.fieldsContainer');
+      addField(container);
     });
+
+    return sectionDiv;
   }
 
   function addField(container) {
@@ -149,26 +147,30 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     container.appendChild(fieldDiv);
   }
-  
+
   function addSignatureField(signatureTitle = ''){
-      const sigDiv = document.createElement('div');
-      sigDiv.className = 'field-group';
-      sigDiv.innerHTML = `
-        <div class="row">
-          <label style="flex:1;">Signature Title
-            <input type="text" class="sigTitle" value="${signatureTitle}" placeholder="e.g., Nominator Signature">
-          </label>
-          <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
-        </div>
-      `;
-      signaturesContainer.appendChild(sigDiv);
+    const sigDiv = document.createElement('div');
+    sigDiv.className = 'field-group';
+    sigDiv.innerHTML = `
+      <div class="row">
+        <label style="flex:1;">Signature Title
+          <input type="text" class="sigTitle" value="${signatureTitle}" placeholder="e.g., Nominator Signature">
+        </label>
+        <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+      </div>
+    `;
+    signaturesContainer.appendChild(sigDiv);
   }
 
-  document.getElementById('addSectionBtn').addEventListener('click', () => addSection());
+  document.getElementById('addSectionBtn').addEventListener('click', () => {
+    const newSection = addSection();
+    addField(newSection.querySelector('.fieldsContainer'));
+  });
+
   document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
-  
+
   document.getElementById('generatePromptBtn').addEventListener('click', () => {
-    let prompt = `**Goal:** ${document.getElementById('formTitle').value}\n`;
+    let prompt = `**Goal:** ${document.getElementById('formGoal').value}\n`;
     prompt += `**Core Requirements:**\n- Use the same CSS styling and responsive layout as the reference code.\n- Implement the custom signature pad functionality and autosave logic.\n\n`;
     prompt += `**Reference Code:** ${document.getElementById('referenceCode').value}\n\n`;
     prompt += `**New Form Requirements:**\n\n`;
@@ -184,8 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pdfField = fieldDiv.querySelector('.pdfField').value;
         const type = fieldDiv.querySelector('.fieldType').value;
         const arrangement = fieldDiv.querySelector('.fieldArrangement').value;
-        prompt += `  - **${label}:** ${type} input. `;
-        if (arrangement) prompt += `Arrangement / Options: ${arrangement}.`;
+        prompt += `  - **${label}:** ${type} input.`;
+        if (arrangement) prompt += ` Arrangement / Options: ${arrangement}.`;
         if (htmlId) prompt += ` HTML ID: \`${htmlId}\`.`;
         if (pdfField) prompt += ` Maps to PDF field: \`"${pdfField}"\`.`;
         prompt += `\n`;
@@ -196,8 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Signatures
     prompt += `**Signature Pad Details:**\n`;
     document.querySelectorAll('#signaturesContainer .field-group').forEach(sigDiv => {
-        const title = sigDiv.querySelector('.sigTitle').value;
-        prompt += `- **${title}**\n`;
+      const title = sigDiv.querySelector('.sigTitle').value;
+      prompt += `- **${title}**\n`;
     });
     prompt += `\n`;
 
@@ -209,8 +211,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('promptOutput').value = prompt;
   });
 
-  addSection();
-  addField(document.querySelector('.fieldsContainer'));
+  // Initialize first section with one field
+  const firstSection = addSection();
+  addField(firstSection.querySelector('.fieldsContainer'));
+  // Initialize one signature field
   addSignatureField();
 });
 </script>
