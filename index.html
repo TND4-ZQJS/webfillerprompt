@@ -1,222 +1,153 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Prompt Generator for Web Forms</title>
+<meta charset="utf-8" />
+<title>Web Form Filler with Signatures</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  :root{--bg:#f6f7f9;--card:#fff;--accent:#007aff;--muted:#666;}
-  *{box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;margin:18px;background:var(--bg);color:#111}
-  main{max-width:980px;margin:0 auto;background:var(--card);padding:18px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.06)}
-  h1{margin-top:0;font-size:1.25rem}
-  h2{font-size:1rem;border-bottom:1px solid #eee;padding-bottom:6px;}
-  .section{background:#fbfbfd;border:1px solid #eee;padding:12px;border-radius:8px;margin:12px 0}
-  label{display:block;margin:8px 0;font-size:0.95rem}
-  input[type=text],input[type=email],input[type=number],input[type=tel],select,textarea{
-    width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-top:6px;font-size:1rem;
-  }
-  .row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
-  .row > label{flex:1;min-width:150px;}
-  .muted{color:var(--muted);font-size:0.85rem}
-  button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
-  button.secondary{background:#999}
-  .field-group{border:1px dashed #ccc;padding:8px;margin:8px 0;border-radius:6px;position:relative;}
-  .field-group-remove{position:absolute;top:4px;right:4px;font-size:0.7rem;background:red;color:#fff;border:none;padding:2px 6px;border-radius:4px;cursor:pointer;}
-  textarea#promptOutput{width:100%;height:400px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;}
-  
-  /* Responsive CSS */
-  @media (max-width: 600px) {
-    body {
-      margin: 12px;
-    }
-    main {
-      padding: 12px;
-    }
-    .row {
-      flex-direction: column;
-      gap: 0;
-    }
-    .row > label {
-      min-width: 100%;
-    }
-  }
+  :root { --bg:#f6f7f9; --card:#fff; --accent:#007aff; --muted:#666; --line:#e9e9ee; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background:var(--bg); margin:0; padding:2rem; }
+  .card { background:var(--card); border-radius:12px; padding:1.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:1.5rem; }
+  h2 { font-size:1.1rem; margin-bottom:0.8rem; color:#111; }
+  label { display:block; margin-bottom:1rem; }
+  input, select { width:100%; padding:0.5rem; border:1px solid var(--line); border-radius:8px; font-size:1rem; }
+  button { background:var(--accent); color:#fff; border:none; padding:0.6rem 1rem; border-radius:8px; cursor:pointer; font-size:0.9rem; }
+  button:hover { opacity:0.9; }
+
+  /* Signature UI */
+  .sig-block { margin-bottom:1.5rem; }
+  .sig-label { font-weight:500; margin-bottom:0.5rem; }
+  .sig-pad { border:1px solid var(--line); border-radius:8px; width:100%; height:150px; background:#fff; touch-action:none; }
+  .sig-actions { margin-top:0.5rem; display:flex; gap:0.5rem; }
+  .sig-preview { margin-top:0.5rem; border:1px solid var(--line); border-radius:8px; padding:0.3rem; background:#fafafa; max-width:250px; }
+  .sig-preview img { max-width:100%; display:block; }
 </style>
 </head>
 <body>
-<main>
-  <h1>AI Prompt Generator for Web Forms</h1>
-  <p class="muted">Fill out the details below to generate a structured prompt for me to create a new web form filler.</p>
 
-  <section class="section">
-    <h2>New Form Details</h2>
-    <label>New Form Title
-      <input type="text" id="formTitle" placeholder="e.g., Nomination Form Web Filler">
-    </label>
-    <label>Goal / Description
-      <textarea id="formGoal" rows="3" placeholder="e.g., Create a new web form for nomination, using the same styling and core functionality (signature pad, autosave) as the previous form."></textarea>
-    </label>
-    <label>Reference Code Location
-      <input type="text" id="referenceCode" placeholder="e.g., [Paste the full HTML here] or a link to a pastebin.">
-      <small class="muted">I need the full code from your previous form to ensure styling and functionality are replicated correctly.</small>
-    </label>
-  </section>
+<div class="card">
+  <h2>Form Filler</h2>
+  <form id="fillerForm">
+    <!-- Example text inputs -->
+    <label>Policy No <input type="text" name="PolicyNo" required /></label>
+    <label>Insured Name <input type="text" name="InsuredName" required /></label>
 
-  <section class="section">
-    <h2>UI Layout & Fields</h2>
-    <div id="sectionsContainer"></div>
-    <button id="addSectionBtn">+ Add New Section</button>
-  </section>
-  
-  <section class="section">
-    <h2>Signature Pad Details</h2>
-    <div id="signaturesContainer"></div>
-    <button id="addSignatureBtn">+ Add Signature Field</button>
-  </section>
-  
-  <section class="section">
-    <h2>PDF Mapping</h2>
-    <label>New PDF Filename
-      <input type="text" id="pdfFilename" placeholder="e.g., Nomination_Form_fillable.pdf">
-    </label>
-  </section>
+    <!-- Signatures will be injected here -->
+    <div id="signatures"></div>
 
-  <section class="section">
-    <h2>Final Prompt</h2>
-    <button id="generatePromptBtn">Generate Prompt</button>
-    <textarea id="promptOutput" readonly placeholder="Your generated prompt will appear here."></textarea>
-  </section>
-</main>
+    <button type="button" onclick="exportPDF()">Export PDF</button>
+  </form>
+</div>
 
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const sectionsContainer = document.getElementById('sectionsContainer');
-  const signaturesContainer = document.getElementById('signaturesContainer');
+/* ===== Schema (fields + signatures) ===== */
+const schema = {
+  fields: [
+    { label: "Policy No", id: "PolicyNo" },
+    { label: "Insured Name", id: "InsuredName" }
+  ],
+  signatures: [
+    { title: "Owner Signature", id: "sig_owner", x:50, y:400, scale:0.45, page:0 },
+    { title: "Payor Signature", id: "sig_payor", x:300, y:400, scale:0.45, page:0 }
+  ]
+};
 
-  function addSection(sectionTitle = '') {
-    const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'section';
-    sectionDiv.innerHTML = `
-      <div class="row">
-        <label style="flex:1;">Section Title
-          <input type="text" class="sectionTitle" value="${sectionTitle}" placeholder="e.g., Nominee Details">
-        </label>
-        <button class="secondary" style="height:38px;align-self:end;" onclick="this.closest('.section').remove();">Remove Section</button>
-      </div>
-      <p>Fields:</p>
-      <div class="fieldsContainer"></div>
-      <button type="button" class="addFieldBtn">+ Add Field</button>
-    `;
-    sectionsContainer.appendChild(sectionDiv);
+/* ===== Signature Module ===== */
+function createSignaturePad(id, label){
+  const wrap=document.createElement("div");
+  wrap.className="sig-block";
+  wrap.innerHTML=`
+    <div class="sig-label">${label}</div>
+    <canvas id="${id}_pad" class="sig-pad"></canvas>
+    <div class="sig-actions">
+      <button type="button" onclick="clearSignature('${id}')">Clear</button>
+      <button type="button" onclick="saveSignature('${id}')">Save</button>
+    </div>
+    <div class="sig-preview" id="${id}_preview"></div>
+  `;
+  document.getElementById("signatures").appendChild(wrap);
+  initSignaturePad(id);
+}
 
-    sectionDiv.querySelector('.addFieldBtn').addEventListener('click', (e) => {
-      const container = e.target.closest('.section').querySelector('.fieldsContainer');
-      addField(container);
-    });
+function initSignaturePad(id){
+  const canvas=document.getElementById(id+"_pad");
+  const ctx=canvas.getContext("2d");
+  let drawing=false;
 
-    return sectionDiv;
+  function resizeCanvas(){
+    canvas.width=canvas.offsetWidth;
+    canvas.height=canvas.offsetHeight;
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
   }
+  resizeCanvas(); window.addEventListener("resize",resizeCanvas);
 
-  function addField(container) {
-    const fieldDiv = document.createElement('div');
-    fieldDiv.className = 'field-group';
-    fieldDiv.innerHTML = `
-      <div class="row">
-        <label>Label<input type="text" class="fieldLabel" placeholder="e.g., Nominee's Name"></label>
-        <label>HTML ID<input type="text" class="htmlId" placeholder="e.g., nominee_name"></label>
-      </div>
-      <div class="row">
-        <label>Input Type
-          <select class="fieldType">
-            <option value="text">Text Input</option>
-            <option value="email">Email</option>
-            <option value="tel">Tel</option>
-            <option value="textarea">Textarea</option>
-            <option value="select">Select (Dropdown)</option>
-            <option value="number">Number</option>
-            <option value="radio">Radio (Group)</option>
-            <option value="credit-card">Credit Card</option>
-          </select>
-        </label>
-        <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., nomineeFullName"></label>
-      </div>
-      <div class="row">
-        <label style="flex:1;">Arrangement / Options<input type="text" class="fieldArrangement" placeholder="e.g., in a row with 'NRIC' or 'options: Yes, No'"></label>
-      </div>
-      <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
-    `;
-    container.appendChild(fieldDiv);
+  function start(e){drawing=true;ctx.beginPath();ctx.moveTo(getX(e),getY(e));e.preventDefault();}
+  function draw(e){if(!drawing)return;ctx.lineTo(getX(e),getY(e));ctx.strokeStyle="#000";ctx.lineWidth=2;ctx.stroke();e.preventDefault();}
+  function end(e){drawing=false;ctx.closePath();e.preventDefault();}
+
+  function getX(e){return e.touches?e.touches[0].clientX-canvas.getBoundingClientRect().left:e.offsetX;}
+  function getY(e){return e.touches?e.touches[0].clientY-canvas.getBoundingClientRect().top:e.offsetY;}
+
+  canvas.addEventListener("mousedown",start);canvas.addEventListener("mousemove",draw);canvas.addEventListener("mouseup",end);canvas.addEventListener("mouseleave",end);
+  canvas.addEventListener("touchstart",start);canvas.addEventListener("touchmove",draw);canvas.addEventListener("touchend",end);
+}
+
+function clearSignature(id){
+  const canvas=document.getElementById(id+"_pad");
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  localStorage.removeItem(id); document.getElementById(id+"_preview").innerHTML="";
+}
+
+function saveSignature(id){
+  const canvas=document.getElementById(id+"_pad");
+  const dataUrl=canvas.toDataURL("image/png");
+  localStorage.setItem(id,dataUrl);
+  document.getElementById(id+"_preview").innerHTML=`<img src="${dataUrl}"/>`;
+}
+
+async function embedSignatures(pdfDoc){
+  for(const sig of schema.signatures){
+    const sigData=localStorage.getItem(sig.id);
+    if(sigData){
+      const png=await pdfDoc.embedPng(sigData);
+      const {width,height}=png.size();
+      const page=pdfDoc.getPage(sig.page||0);
+      const drawW=width*sig.scale;
+      const drawH=height*sig.scale;
+      page.drawImage(png,{x:sig.x,y:sig.y,width:drawW,height:drawH});
+    }
   }
+}
 
-  function addSignatureField(signatureTitle = ''){
-    const sigDiv = document.createElement('div');
-    sigDiv.className = 'field-group';
-    sigDiv.innerHTML = `
-      <div class="row">
-        <label style="flex:1;">Signature Title
-          <input type="text" class="sigTitle" value="${signatureTitle}" placeholder="e.g., Nominator Signature">
-        </label>
-        <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
-      </div>
-    `;
-    signaturesContainer.appendChild(sigDiv);
-  }
+/* ===== Build UI ===== */
+schema.signatures.forEach(s=>createSignaturePad(s.id,s.title));
 
-  document.getElementById('addSectionBtn').addEventListener('click', () => {
-    const newSection = addSection();
-    addField(newSection.querySelector('.fieldsContainer'));
+/* ===== PDF Export ===== */
+async function exportPDF(){
+  const pdfDoc=await PDFLib.PDFDocument.create();
+  const page=pdfDoc.addPage([595,842]); // A4 blank
+  const form=document.getElementById("fillerForm");
+
+  // Add text fields
+  let y=800;
+  schema.fields.forEach(f=>{
+    const val=form.querySelector(`[name=${f.id}]`).value;
+    page.drawText(`${f.label}: ${val}`,{x:50,y:y,size:12});
+    y-=20;
   });
 
-  document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
+  // Add signatures
+  await embedSignatures(pdfDoc);
 
-  document.getElementById('generatePromptBtn').addEventListener('click', () => {
-    let prompt = `**Goal:** ${document.getElementById('formGoal').value}\n`;
-    prompt += `**Core Requirements:**\n- Use the same CSS styling and responsive layout as the reference code.\n- Implement the custom signature pad functionality and autosave logic.\n\n`;
-    prompt += `**Reference Code:** ${document.getElementById('referenceCode').value}\n\n`;
-    prompt += `**New Form Requirements:**\n\n`;
-
-    // UI Layout
-    prompt += `**UI Layout & Fields:**\n`;
-    document.querySelectorAll('#sectionsContainer .section').forEach(sectionDiv => {
-      const title = sectionDiv.querySelector('.sectionTitle').value;
-      prompt += `- **Section: ${title}**\n`;
-      sectionDiv.querySelectorAll('.field-group').forEach(fieldDiv => {
-        const label = fieldDiv.querySelector('.fieldLabel').value;
-        const htmlId = fieldDiv.querySelector('.htmlId').value;
-        const pdfField = fieldDiv.querySelector('.pdfField').value;
-        const type = fieldDiv.querySelector('.fieldType').value;
-        const arrangement = fieldDiv.querySelector('.fieldArrangement').value;
-        prompt += `  - **${label}:** ${type} input.`;
-        if (arrangement) prompt += ` Arrangement / Options: ${arrangement}.`;
-        if (htmlId) prompt += ` HTML ID: \`${htmlId}\`.`;
-        if (pdfField) prompt += ` Maps to PDF field: \`"${pdfField}"\`.`;
-        prompt += `\n`;
-      });
-      prompt += `\n`;
-    });
-
-    // Signatures
-    prompt += `**Signature Pad Details:**\n`;
-    document.querySelectorAll('#signaturesContainer .field-group').forEach(sigDiv => {
-      const title = sigDiv.querySelector('.sigTitle').value;
-      prompt += `- **${title}**\n`;
-    });
-    prompt += `\n`;
-
-    // PDF Mapping
-    prompt += `**PDF Mapping:**\n`;
-    prompt += `- PDF File: ${document.getElementById('pdfFilename').value}\n`;
-    prompt += `  (Mapping details are included with each field in the "UI Layout & Fields" section above.)\n\n`;
-
-    document.getElementById('promptOutput').value = prompt;
-  });
-
-  // Initialize first section with one field
-  const firstSection = addSection();
-  addField(firstSection.querySelector('.fieldsContainer'));
-  // Initialize one signature field
-  addSignatureField();
-});
+  const pdfBytes=await pdfDoc.save();
+  const blob=new Blob([pdfBytes],{type:"application/pdf"});
+  const link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download="filled.pdf";
+  link.click();
+}
 </script>
 </body>
 </html>
