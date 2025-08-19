@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AI Prompt Generator for Web Forms</title>
 <style>
   :root{--bg:#f6f7f9;--card:#fff;--accent:#007aff;--muted:#666;}
@@ -12,7 +12,7 @@
   h1{margin-top:0;font-size:1.25rem}
   h2{font-size:1rem;border-bottom:1px solid #eee;padding-bottom:6px;}
   .section{background:#fbfbfd;border:1px solid #eee;padding:12px;border-radius:8px;margin:12px 0}
-  .form-section{background:#fdfdfd;border:1px dashed #ccc;padding:12px;border-radius:8px;margin:12px 0}
+  .form-section{background:#fffefc;border:1px dashed #cfcfcf;padding:12px;border-radius:8px;margin:12px 0}
   label{display:block;margin:8px 0;font-size:0.95rem}
   input[type=text],input[type=email],input[type=number],input[type=tel],select,textarea{
     width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-top:6px;font-size:1rem;
@@ -24,8 +24,9 @@
   button.secondary{background:#999}
   .field-group{border:1px dashed #ccc;padding:8px;margin:8px 0;border-radius:6px;position:relative;}
   .field-group-remove{position:absolute;top:4px;right:4px;font-size:0.7rem;background:red;color:#fff;border:none;padding:2px 6px;border-radius:4px;cursor:pointer;}
-  textarea#promptOutput{width:100%;height:400px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;}
-  
+  textarea#promptOutput{width:100%;height:400px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;white-space:pre-wrap;}
+  .small-muted{font-size:0.85rem;color:#666;margin-top:6px;}
+  hr{border:0;border-top:1px solid #eee;margin:12px 0;}
   /* Responsive */
   @media (max-width: 600px) {
     body {margin: 12px;}
@@ -38,7 +39,7 @@
 <body>
 <main>
   <h1>AI Prompt Generator for Web Forms</h1>
-  <p class="muted">Fill out the details below to generate a structured prompt for me to create a new web form filler.</p>
+  <p class="muted">Fill out details to generate a strict prompt that reproduces a web form filler 1:1 from your reference code (Pastebin / URL).</p>
 
   <section class="section">
     <h2>New Form Details</h2>
@@ -46,11 +47,11 @@
       <input type="text" id="formTitle" placeholder="e.g., Nomination Form Web Filler">
     </label>
     <label>Goal / Description
-      <textarea id="formGoal" rows="3" placeholder="e.g., Create a new web form for nomination, using the same styling and core functionality."></textarea>
+      <textarea id="formGoal" rows="3" placeholder="e.g., Create a new web form for nomination, using same styling + signature pad + autosave."></textarea>
     </label>
-    <label>Reference Code Location
-      <input type="text" id="referenceCode" placeholder="e.g., [Paste HTML here] or a Pastebin link">
-      <small class="muted">Provide full code from your previous form to replicate styling and functionality.</small>
+    <label>Reference Code Location (Pastebin / URL / Full HTML)
+      <input type="text" id="referenceCode" placeholder="Paste the raw code or a link (Pastebin raw link recommended)">
+      <div class="small-muted">If a link cannot be fetched due to CORS, paste the full HTML here.</div>
     </label>
   </section>
 
@@ -58,12 +59,14 @@
     <h2>UI Layout & Fields</h2>
     <div id="sectionsContainer"></div>
     <button id="addSectionBtn" type="button">+ Add New Section</button>
+    <div class="small-muted">Each Section can contain multiple fields. Fields map to PDF form fields with IDs.</div>
   </section>
   
   <section class="section">
     <h2>Signature Pad Details</h2>
     <div id="signaturesContainer"></div>
     <button id="addSignatureBtn" type="button">+ Add Signature Field</button>
+    <div class="small-muted">Signature blocks include text inputs and dropdowns (e.g., Card Type). The generated prompt enforces signature pad behavior and PDF embedding.</div>
   </section>
   
   <section class="section">
@@ -91,10 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const signaturesContainer = document.getElementById('signaturesContainer');
   const output = document.getElementById('promptOutput');
 
+  // escape user text for safe inclusion in prompt
   function escapeText(str) {
-    return str.replace(/`/g,"\\`").replace(/"/g,'\\"');
+    if(!str) return '';
+    return String(str).replace(/`/g,"\\`").replace(/"/g,'\\"');
   }
 
+  // -----------------------
+  // Section / Field helpers
+  // -----------------------
   function addSection(title='') {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'form-section';
@@ -110,9 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <button type="button" class="addFieldBtn">+ Add Field</button>
     `;
     sectionsContainer.appendChild(sectionDiv);
-    sectionDiv.querySelector('.addFieldBtn').addEventListener('click', () => {
-      addField(sectionDiv.querySelector('.fieldsContainer'));
-    });
+    sectionDiv.querySelector('.addFieldBtn').addEventListener('click', () => addField(sectionDiv.querySelector('.fieldsContainer')));
     return sectionDiv;
   }
 
@@ -140,98 +146,176 @@ document.addEventListener('DOMContentLoaded', () => {
         <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., nomineeFullName"></label>
       </div>
       <div class="row">
-        <label style="flex:1;">Arrangement / Options<input type="text" class="fieldArrangement" placeholder="e.g., options: Yes, No"></label>
+        <label style="flex:1;">Arrangement / Options<input type="text" class="fieldArrangement" placeholder="e.g., options: Yes, No; in a row with NRIC"></label>
       </div>
       <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
     `;
     container.appendChild(fieldDiv);
   }
 
+  // -----------------------
+  // Signature helpers
+  // -----------------------
   function addSignatureField(title='') {
     const sigDiv = document.createElement('div');
     sigDiv.className = 'field-group';
     sigDiv.innerHTML = `
       <div class="row">
         <label style="flex:1;">Signature Title
-          <input type="text" class="sigTitle" value="${title}" placeholder="e.g., Nominator Signature">
+          <input type="text" class="sigTitle" value="${title}" placeholder="e.g., Cardholder Signature">
         </label>
         <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
       </div>
+
+      <div class="row">
+        <label style="flex:1;">Text Input Label
+          <input type="text" class="sig-text-label" placeholder="e.g., Cardholder Name">
+        </label>
+        <label style="flex:1;">Field ID
+          <input type="text" class="sig-text-id" placeholder="e.g., cardholderName">
+        </label>
+      </div>
+
+      <div class="row">
+        <label style="flex:1;">Dropdown Label
+          <input type="text" class="sig-drop-label" placeholder="e.g., Card Type">
+        </label>
+        <label style="flex:1;">Options (comma separated)
+          <input type="text" class="sig-drop-options" placeholder="Credit, Debit" value="Credit, Debit">
+        </label>
+        <label style="flex:1;">Field ID
+          <input type="text" class="sig-drop-id" placeholder="e.g., cardType">
+        </label>
+      </div>
+
+      <div class="small-muted">The generated prompt will instruct the AI to: include a signature canvas, a Clear button, autosave all fields/signature to localStorage, and embed signature into PDF at correct X/Y/scale.</div>
     `;
     signaturesContainer.appendChild(sigDiv);
   }
 
-  function buildPrompt(superMode=false){
-    let prompt = `**Goal:** ${escapeText(document.getElementById('formGoal').value)}\n`;
-    prompt += `**Core Requirements:**\n- Use the same CSS styling and responsive layout as the reference code.\n- Implement custom signature pad functionality and autosave.\n\n`;
-    prompt += `**Reference Code:** ${escapeText(document.getElementById('referenceCode').value)}\n\n`;
-    prompt += `**New Form Requirements:**\n\n`;
+  // -----------------------
+  // Prompt builder
+  // -----------------------
+  function buildPrompt(superMode=false) {
+    const goal = escapeText(document.getElementById('formGoal').value || '');
+    const reference = escapeText(document.getElementById('referenceCode').value || '');
+    let prompt = '';
 
-    // UI Layout
-    prompt += `**UI Layout & Fields:**\n`;
-    document.querySelectorAll('#sectionsContainer .form-section').forEach(sectionDiv => {
-      const title = sectionDiv.querySelector('.sectionTitle').value;
-      prompt += `- **Section: ${escapeText(title)}**\n`;
-      sectionDiv.querySelectorAll('.field-group').forEach(fieldDiv => {
-        const label = escapeText(fieldDiv.querySelector('.fieldLabel').value);
-        const htmlId = escapeText(fieldDiv.querySelector('.htmlId').value);
-        const pdfField = escapeText(fieldDiv.querySelector('.pdfField').value);
-        const type = fieldDiv.querySelector('.fieldType').value;
-        const arrangement = escapeText(fieldDiv.querySelector('.fieldArrangement').value);
-        prompt += `  - **${label}:** ${type} input.`;
-        if (arrangement) prompt += ` Arrangement/Options: ${arrangement}.`;
-        if (htmlId) prompt += ` HTML ID: \`${htmlId}\`.`;
-        if (pdfField) prompt += ` Maps to PDF field: \`${pdfField}\`.`;
-        prompt += `\n`;
+    prompt += `⚠️ STRICT REQUIREMENTS:\n- Replicate 1:1 the HTML, CSS, and JavaScript structure, styling, and runtime behavior from the reference code at: ${reference}\n- Do NOT simplify UI, remove logic, or omit features. The final output must be a full, working single-file HTML+CSS+JS web filler.\n- Required behaviors to copy EXACTLY: dynamic add/remove of multiple items (policies), autosave to localStorage, signature pad popup and embedding, PDF preview and flattening, reset, and field-to-PDF mapping.\n\n`;
+
+    prompt += `**Goal:** ${goal}\n\n`;
+    prompt += `**Reference (raw or link):**\n${reference}\n\n`;
+    prompt += `**New Form Requirements:**\n`;
+
+    // UI Layout & Fields
+    prompt += `\n**UI Layout & Fields:**\n`;
+    const sections = document.querySelectorAll('#sectionsContainer .form-section');
+    if(sections.length === 0) {
+      prompt += '- (No sections defined) -\n';
+    } else {
+      sections.forEach((sec, si) => {
+        const title = escapeText(sec.querySelector('.sectionTitle').value || `Section ${si+1}`);
+        prompt += `- Section: ${title}\n`;
+        const fields = sec.querySelectorAll('.field-group');
+        if(fields.length === 0) {
+          prompt += `  - (no fields specified)\n`;
+        } else {
+          fields.forEach((f) => {
+            const label = escapeText(f.querySelector('.fieldLabel').value || '');
+            const htmlId = escapeText(f.querySelector('.htmlId').value || '');
+            const pdfField = escapeText(f.querySelector('.pdfField').value || '');
+            const type = f.querySelector('.fieldType').value || 'text';
+            const arrangement = escapeText(f.querySelector('.fieldArrangement').value || '');
+            prompt += `  - ${label || '(no label)'} — ${type} input`;
+            if(arrangement) prompt += `; arrangement/options: ${arrangement}`;
+            if(htmlId) prompt += `; HTML ID: \`${htmlId}\``;
+            if(pdfField) prompt += `; maps to PDF field: \`${pdfField}\``;
+            prompt += `\n`;
+          });
+        }
       });
-      prompt += `\n`;
-    });
+    }
 
     // Signatures
-    prompt += `**Signature Pad Details:**\n`;
-    const sigs = document.querySelectorAll('#signaturesContainer .field-group');
-    if(sigs.length===0){
-      prompt += "- (No signature fields defined)\n";
+    prompt += `\n**Signature Pad Details:**\n`;
+    const sigNodes = document.querySelectorAll('#signaturesContainer .field-group');
+    if(sigNodes.length === 0) {
+      prompt += '- (No signature fields defined)\n';
     } else {
-      sigs.forEach(sigDiv => {
-        const title = escapeText(sigDiv.querySelector('.sigTitle').value);
-        prompt += `- **${title}**\n`;
+      sigNodes.forEach((s, idx) => {
+        const title = escapeText(s.querySelector('.sigTitle').value || `Signature ${idx+1}`);
+        const textLabel = escapeText(s.querySelector('.sig-text-label').value || '');
+        const textId = escapeText(s.querySelector('.sig-text-id').value || '');
+        const dropLabel = escapeText(s.querySelector('.sig-drop-label').value || '');
+        const dropOptions = escapeText(s.querySelector('.sig-drop-options').value || '');
+        const dropId = escapeText(s.querySelector('.sig-drop-id').value || '');
+
+        prompt += `- ${title}:\n`;
+        if(textLabel) prompt += `  - Text input: ${textLabel}${textId ? ' (id: '+textId+')' : ''}\n`;
+        if(dropLabel) prompt += `  - Dropdown: ${dropLabel}${dropId ? ' (id: '+dropId+')' : ''} — options: ${dropOptions || '[none]'}\n`;
+        prompt += `  - Include signature canvas + Clear button.\n`;
+        prompt += `  - Autosave all related inputs + signature to localStorage.\n`;
+        prompt += `  - Provide a preview and embed the signature into the output PDF at correct X/Y scale (adjustable constants and documented in code).\n`;
       });
     }
-    prompt += `\n`;
 
     // PDF Mapping
-    const pdfFilename = document.getElementById('pdfFilename').value || "[Provide PDF filename here]";
-    prompt += `**PDF Mapping:**\n`;
-    prompt += `- PDF File: ${escapeText(pdfFilename)}\n\n`;
+    const pdfFilename = escapeText(document.getElementById('pdfFilename').value || '[Provide PDF filename here]');
+    prompt += `\n**PDF Mapping:**\n- PDF File: ${pdfFilename}\n- Ensure each field's HTML ID maps to the PDF field name specified above.\n\n`;
 
-    if(superMode){
-      prompt += `**Extra Requirement:** Generate the complete running HTML+CSS+JS code for this web form filler, following the same behavior as the reference code.\n`;
+    if(superMode) {
+      prompt += `**Extra (Super) Requirement:**\n- Output a single-file runnable HTML page that includes the full implementation: HTML, embedded CSS, and JavaScript. The runnable file should implement exact behavior (UI, autosave, signature, PDF flattening) and include comments where coordinate/X/Y values are set for signature embedding.\n\n`;
     }
+
+    prompt += `\n---\nPlease produce the complete working code (or the strict prompt to generate it) now.\n`;
+
     return prompt;
   }
 
+  // -----------------------
+  // Wire UI buttons
+  // -----------------------
   document.getElementById('addSectionBtn').addEventListener('click', () => {
-    const newSection = addSection();
-    addField(newSection.querySelector('.fieldsContainer'));
+    const s = addSection();
+    addField(s.querySelector('.fieldsContainer'));
   });
+
   document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
 
   document.getElementById('generatePromptBtn').addEventListener('click', () => {
     output.value = buildPrompt(false);
-  });
-  document.getElementById('generateSuperPromptBtn').addEventListener('click', () => {
-    output.value = buildPrompt(true);
-  });
-  document.getElementById('copyBtn').addEventListener('click', () => {
-    output.select();document.execCommand('copy');
-    alert('Prompt copied!');
-  });
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    output.value='';
+    console.log('Prompt generated (strict):', output.value.slice(0,120) + '...');
   });
 
-  // Init
+  document.getElementById('generateSuperPromptBtn').addEventListener('click', () => {
+    output.value = buildPrompt(true);
+    console.log('Super prompt generated.');
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    try {
+      const text = output.value;
+      if(!text) { alert('Nothing to copy'); return; }
+      if(navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        output.select();
+        document.execCommand('copy');
+      }
+      alert('Prompt copied to clipboard');
+    } catch (e) {
+      console.error('Copy failed', e);
+      alert('Copy failed — check console');
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    output.value = '';
+  });
+
+  // -----------------------
+  // Init defaults
+  // -----------------------
   const firstSection = addSection();
   addField(firstSection.querySelector('.fieldsContainer'));
   addSignatureField();
