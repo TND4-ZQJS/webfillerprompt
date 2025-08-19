@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Prompt Generator for Web Forms</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Prompt Generator for Web Forms — Upgraded</title>
 <style>
   :root{--bg:#f6f7f9;--card:#fff;--accent:#007aff;--muted:#666;}
   *{box-sizing:border-box}
@@ -13,7 +13,7 @@
   h2{font-size:1rem;border-bottom:1px solid #eee;padding-bottom:6px;}
   .section{background:#fbfbfd;border:1px solid #eee;padding:12px;border-radius:8px;margin:12px 0}
   label{display:block;margin:8px 0;font-size:0.95rem}
-  input[type=text],input[type=email],input[type=number],input[type=tel],select,textarea{
+  input[type=text],input[type=number],select,textarea{
     width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-top:6px;font-size:1rem;
   }
   .row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
@@ -23,199 +23,370 @@
   button.secondary{background:#999}
   .field-group{border:1px dashed #ccc;padding:8px;margin:8px 0;border-radius:6px;position:relative;}
   .field-group-remove{position:absolute;top:4px;right:4px;font-size:0.7rem;background:red;color:#fff;border:none;padding:2px 6px;border-radius:4px;cursor:pointer;}
-  textarea#promptOutput{width:100%;height:400px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;}
-  
-  /* Responsive CSS */
-  @media (max-width: 600px) {
-    body {
-      margin: 12px;
-    }
-    main {
-      padding: 12px;
-    }
-    .row {
-      flex-direction: column;
-      gap: 0;
-    }
-    .row > label {
-      min-width: 100%;
-    }
-  }
+  textarea#promptOutput{width:100%;height:420px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px;font-family:monospace;white-space:pre-wrap;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .small{font-size:0.86rem;color:var(--muted)}
+  .mini{padding:6px 8px;font-size:0.86rem}
+  .kbd{background:#eee;padding:3px 8px;border-radius:6px;border:1px solid #ddd}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:720px){ .cols{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <main>
-  <h1>AI Prompt Generator for Web Forms</h1>
-  <p class="muted">Fill out the details below to generate a structured prompt for me to create a new web form filler.</p>
+  <h1>AI Prompt Generator for Web Forms — Upgraded</h1>
+  <p class="small">Build a strict ChatGPT prompt (or a "super-prompt") that returns a full, standalone filler form (HTML+CSS+JS) 1:1 identical to your credit/debit card reference (pastebin: dN7wNJhf).</p>
 
   <section class="section">
     <h2>New Form Details</h2>
     <label>New Form Title
       <input type="text" id="formTitle" placeholder="e.g., Nomination Form Web Filler">
     </label>
-    <label>Goal / Description
-      <textarea id="formGoal" rows="3" placeholder="e.g., Create a new web form for nomination, using the same styling and core functionality (signature pad, autosave) as the previous form."></textarea>
+    <label>Goal / Short Description
+      <input type="text" id="formGoal" placeholder="e.g., Build a Nomination Form that matches the reference exactly">
     </label>
     <label>Reference Code Location
-      <input type="text" id="referenceCode" placeholder="e.g., [Paste the full HTML here] or a link to a pastebin.">
-      <small class="muted">I need the full code from your previous form to ensure styling and functionality are replicated correctly.</small>
+      <input type="text" id="referenceCode" placeholder="Pastebin link or full HTML of reference (required)">
+      <div class="small">Example: https://pastebin.com/dN7wNJhf — include full HTML when possible for best fidelity.</div>
     </label>
   </section>
 
   <section class="section">
-    <h2>UI Layout & Fields</h2>
+    <h2>Form Sections & Fields</h2>
     <div id="sectionsContainer"></div>
-    <button id="addSectionBtn">+ Add New Section</button>
+    <div class="row">
+      <button id="addSectionBtn" class="mini">+ Add New Section</button>
+      <div class="small" style="align-self:center">Each section can contain multiple fields — choose type, HTML ID, PDF field name, and options for selects/radios.</div>
+    </div>
   </section>
-  
+
   <section class="section">
-    <h2>Signature Pad Details</h2>
+    <h2>Signature Sections</h2>
     <div id="signaturesContainer"></div>
-    <button id="addSignatureBtn">+ Add Signature Field</button>
+    <div class="row">
+      <button id="addSignatureBtn" class="mini">+ Add Signature Section</button>
+      <div class="small" style="align-self:center">Signature section will generate Name, IC, State, Date/Month/Year, and Signature Pad (automatically added).</div>
+    </div>
   </section>
-  
+
   <section class="section">
     <h2>PDF Mapping</h2>
     <label>New PDF Filename
       <input type="text" id="pdfFilename" placeholder="e.g., Nomination_Form_fillable.pdf">
     </label>
+    <div class="small">You can set PDF field names per-field in the field rows. The generator will include a mapping table in the prompt.</div>
   </section>
 
   <section class="section">
-    <h2>Final Prompt</h2>
-    <button id="generatePromptBtn">Generate Prompt</button>
-    <textarea id="promptOutput" readonly placeholder="Your generated prompt will appear here."></textarea>
+    <h2>Output</h2>
+    <div class="controls" style="margin-bottom:10px">
+      <button id="generatePromptBtn">Generate Strict Prompt</button>
+      <button id="generateCodePromptBtn" class="secondary">Generate Super-Prompt (Request Full HTML)</button>
+      <button id="copyBtn" class="mini">Copy to clipboard</button>
+      <button id="clearBtn" class="mini">Clear Output</button>
+    </div>
+
+    <textarea id="promptOutput" readonly placeholder="Generated prompt / super-prompt will appear here"></textarea>
   </section>
 </main>
 
 <script>
+/* -------------------------
+   Builder UI (fields + sections)
+   ------------------------- */
 document.addEventListener('DOMContentLoaded', () => {
   const sectionsContainer = document.getElementById('sectionsContainer');
   const signaturesContainer = document.getElementById('signaturesContainer');
 
-  function addSection(sectionTitle = '') {
-    const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'section';
-    sectionDiv.innerHTML = `
+  function addSection(title = '') {
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    sec.innerHTML = `
       <div class="row">
-        <label style="flex:1;">Section Title
-          <input type="text" class="sectionTitle" value="${sectionTitle}" placeholder="e.g., Nominee Details">
+        <label style="flex:1">
+          Section Title
+          <input type="text" class="sectionTitle" value="${escapeHtml(title)}" placeholder="e.g., Policy Details">
         </label>
-        <button class="secondary" style="height:38px;align-self:end;" onclick="this.closest('.section').remove();">Remove Section</button>
+        <button class="secondary mini" style="height:38px;align-self:end" onclick="this.closest('.section').remove();">Remove Section</button>
       </div>
-      <p>Fields:</p>
+      <div><strong>Fields</strong></div>
       <div class="fieldsContainer"></div>
-      <button type="button" class="addFieldBtn">+ Add Field</button>
+      <div class="row" style="margin-top:8px">
+        <button type="button" class="addFieldBtn mini">+ Add Field</button>
+        <div class="small" style="align-self:center">Field types: text, select, radio, number, date, textarea.</div>
+      </div>
     `;
-    sectionsContainer.appendChild(sectionDiv);
+    sectionsContainer.appendChild(sec);
 
-    sectionDiv.querySelector('.addFieldBtn').addEventListener('click', (e) => {
-      const container = e.target.closest('.section').querySelector('.fieldsContainer');
-      addField(container);
+    sec.querySelector('.addFieldBtn').addEventListener('click', () => {
+      addField(sec.querySelector('.fieldsContainer'));
     });
 
-    return sectionDiv;
+    return sec;
   }
 
-  function addField(container) {
-    const fieldDiv = document.createElement('div');
-    fieldDiv.className = 'field-group';
-    fieldDiv.innerHTML = `
+  function addField(container, pre = {}) {
+    const label = pre.label || '';
+    const htmlId = pre.htmlId || '';
+    const pdfField = pre.pdfField || '';
+    const type = pre.type || 'text';
+    const arrangement = pre.arrangement || '';
+    const options = pre.options || '';
+
+    const f = document.createElement('div');
+    f.className = 'field-group';
+    f.innerHTML = `
       <div class="row">
-        <label>Label<input type="text" class="fieldLabel" placeholder="e.g., Nominee's Name"></label>
-        <label>HTML ID<input type="text" class="htmlId" placeholder="e.g., nominee_name"></label>
+        <label>Label<input type="text" class="fieldLabel" value="${escapeHtml(label)}" placeholder="e.g., Applicant Name"></label>
+        <label>HTML ID<input type="text" class="htmlId" value="${escapeHtml(htmlId)}" placeholder="e.g., applicant_name"></label>
       </div>
       <div class="row">
-        <label>Input Type
+        <label>
+          Type
           <select class="fieldType">
-            <option value="text">Text Input</option>
-            <option value="email">Email</option>
-            <option value="tel">Tel</option>
+            <option value="text">Text</option>
             <option value="textarea">Textarea</option>
-            <option value="select">Select (Dropdown)</option>
             <option value="number">Number</option>
-            <option value="radio">Radio (Group)</option>
-            <option value="credit-card">Credit Card</option>
+            <option value="date">Date</option>
+            <option value="select">Select (Dropdown)</option>
+            <option value="radio">Radio</option>
+            <option value="tel">Tel</option>
+            <option value="email">Email</option>
           </select>
         </label>
-        <label>PDF Field Name<input type="text" class="pdfField" placeholder="e.g., nomineeFullName"></label>
+        <label>PDF Field Name<input type="text" class="pdfField" value="${escapeHtml(pdfField)}" placeholder="e.g., ApplicantName"></label>
       </div>
       <div class="row">
-        <label style="flex:1;">Arrangement / Options<input type="text" class="fieldArrangement" placeholder="e.g., in a row with 'NRIC' or 'options: Yes, No'"></label>
+        <label style="flex:1">Options (comma separated — for select & radio)
+          <input type="text" class="fieldOptions" value="${escapeHtml(options)}" placeholder="e.g., Yes, No, N/A">
+        </label>
       </div>
-      <button type="button" class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+      <div class="row">
+        <label style="flex:1">Arrangement / Notes
+          <input type="text" class="fieldArrangement" value="${escapeHtml(arrangement)}" placeholder="e.g., inline with NRIC or read-only on mobile">
+        </label>
+      </div>
+      <button type="button" class="field-group-remove" title="Remove field">x</button>
     `;
-    container.appendChild(fieldDiv);
+    container.appendChild(f);
+
+    // set type select to chosen value
+    f.querySelector('.fieldType').value = type;
+
+    // remove button
+    f.querySelector('.field-group-remove').addEventListener('click', (e) => f.remove());
   }
 
-  function addSignatureField(signatureTitle = ''){
-    const sigDiv = document.createElement('div');
-    sigDiv.className = 'field-group';
-    sigDiv.innerHTML = `
+  function addSignatureSection(pre = {}) {
+    const label = pre.label || '';
+    const sigId = pre.sigId || '';
+    const pdfSig = pre.pdfSig || '';
+    const nameId = pre.nameId || '';
+    const pdfName = pre.pdfName || '';
+    const icId = pre.icId || '';
+    const pdfIc = pre.pdfIc || '';
+    const stateId = pre.stateId || '';
+    const pdfState = pre.pdfState || '';
+    const dateId = pre.dateId || '';
+    const pdfDate = pre.pdfDate || '';
+    const monthId = pre.monthId || '';
+    const pdfMonth = pre.pdfMonth || '';
+    const yearId = pre.yearId || '';
+    const pdfYear = pre.pdfYear || '';
+
+    const s = document.createElement('div');
+    s.className = 'field-group';
+    s.innerHTML = `
       <div class="row">
-        <label style="flex:1;">Signature Title
-          <input type="text" class="sigTitle" value="${signatureTitle}" placeholder="e.g., Nominator Signature">
+        <label style="flex:1">Signature Section Label
+          <input type="text" class="sigLabel" value="${escapeHtml(label)}" placeholder="e.g., Signature of Life Insured">
         </label>
-        <button class="field-group-remove" onclick="this.closest('.field-group').remove();">x</button>
+        <button class="field-group-remove" title="Remove signature section">x</button>
+      </div>
+
+      <div class="cols" style="margin-top:8px">
+        <label>Signature Pad ID<input type="text" class="sigId" value="${escapeHtml(sigId)}" placeholder="e.g., sig_lifeInsured"></label>
+        <label>PDF field for Signature<input type="text" class="pdfSig" value="${escapeHtml(pdfSig)}" placeholder="e.g., LifeInsuredSign"></label>
+        <label>Name input ID<input type="text" class="nameId" value="${escapeHtml(nameId)}" placeholder="e.g., life_name"></label>
+        <label>PDF field for Name<input type="text" class="pdfName" value="${escapeHtml(pdfName)}" placeholder="e.g., LifeInsuredName"></label>
+        <label>IC input ID<input type="text" class="icId" value="${escapeHtml(icId)}" placeholder="e.g., life_ic"></label>
+        <label>PDF field for IC<input type="text" class="pdfIc" value="${escapeHtml(pdfIc)}" placeholder="e.g., LifeInsuredIC"></label>
+        <label>State input ID<input type="text" class="stateId" value="${escapeHtml(stateId)}" placeholder="e.g., life_state"></label>
+        <label>PDF field for State<input type="text" class="pdfState" value="${escapeHtml(pdfState)}" placeholder="e.g., LifeInsuredState"></label>
+        <label>Date input ID<input type="text" class="dateId" value="${escapeHtml(dateId)}" placeholder="e.g., life_date"></label>
+        <label>PDF field for Date<input type="text" class="pdfDate" value="${escapeHtml(pdfDate)}" placeholder="e.g., LifeInsuredDate"></label>
+        <label>Month input ID<input type="text" class="monthId" value="${escapeHtml(monthId)}" placeholder="e.g., life_month"></label>
+        <label>PDF field for Month<input type="text" class="pdfMonth" value="${escapeHtml(pdfMonth)}" placeholder="e.g., LifeInsuredMonth"></label>
+        <label>Year input ID<input type="text" class="yearId" value="${escapeHtml(yearId)}" placeholder="e.g., life_year"></label>
+        <label>PDF field for Year<input type="text" class="pdfYear" value="${escapeHtml(pdfYear)}" placeholder="e.g., LifeInsuredYear"></label>
       </div>
     `;
-    signaturesContainer.appendChild(sigDiv);
+    signaturesContainer.appendChild(s);
+
+    s.querySelector('.field-group-remove').addEventListener('click', () => s.remove());
   }
+
+  // initial seed
+  const first = addSection('Policy Details');
+  addField(first.querySelector('.fieldsContainer'));
+  addSignatureSection();
 
   document.getElementById('addSectionBtn').addEventListener('click', () => {
-    const newSection = addSection();
-    addField(newSection.querySelector('.fieldsContainer'));
+    const sec = addSection();
+    addField(sec.querySelector('.fieldsContainer'));
   });
+  document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureSection());
 
-  document.getElementById('addSignatureBtn').addEventListener('click', () => addSignatureField());
+  /* -------------------------
+     Generate outputs
+     ------------------------- */
+  function collectStructure() {
+    const formTitle = document.getElementById('formTitle').value.trim() || 'New Form';
+    const formGoal = document.getElementById('formGoal').value.trim() || '';
+    const referenceCode = document.getElementById('referenceCode').value.trim() || 'https://pastebin.com/dN7wNJhf';
+    const pdfFilename = document.getElementById('pdfFilename').value.trim() || '';
+
+    // Sections & fields
+    const sections = [];
+    document.querySelectorAll('#sectionsContainer > .section').forEach(sec => {
+      const sectionTitle = sec.querySelector('.sectionTitle').value.trim() || 'Section';
+      const fields = [];
+      sec.querySelectorAll('.fieldsContainer .field-group').forEach(f => {
+        const label = f.querySelector('.fieldLabel').value.trim();
+        const htmlId = f.querySelector('.htmlId').value.trim() || slugify(label);
+        const pdfField = f.querySelector('.pdfField').value.trim() || '';
+        const type = f.querySelector('.fieldType').value;
+        const options = f.querySelector('.fieldOptions').value.trim();
+        const arrangement = f.querySelector('.fieldArrangement').value.trim();
+        fields.push({ label, htmlId, pdfField, type, options, arrangement });
+      });
+      sections.push({ sectionTitle, fields });
+    });
+
+    // Signature sections
+    const signatures = [];
+    document.querySelectorAll('#signaturesContainer > .field-group').forEach(s => {
+      const label = s.querySelector('.sigLabel').value.trim() || 'Signature';
+      const sigId = s.querySelector('.sigId').value.trim() || slugify(label+'_sig');
+      const pdfSig = s.querySelector('.pdfSig').value.trim() || '';
+      const nameId = s.querySelector('.nameId').value.trim() || slugify(label+'_name');
+      const pdfName = s.querySelector('.pdfName').value.trim() || '';
+      const icId = s.querySelector('.icId').value.trim() || slugify(label+'_ic');
+      const pdfIc = s.querySelector('.pdfIc').value.trim() || '';
+      const stateId = s.querySelector('.stateId').value.trim() || slugify(label+'_state');
+      const pdfState = s.querySelector('.pdfState').value.trim() || '';
+      const dateId = s.querySelector('.dateId').value.trim() || slugify(label+'_date');
+      const pdfDate = s.querySelector('.pdfDate').value.trim() || '';
+      const monthId = s.querySelector('.monthId').value.trim() || slugify(label+'_month');
+      const pdfMonth = s.querySelector('.pdfMonth').value.trim() || '';
+      const yearId = s.querySelector('.yearId').value.trim() || slugify(label+'_year');
+      const pdfYear = s.querySelector('.pdfYear').value.trim() || '';
+
+      signatures.push({
+        label, sigId, pdfSig,
+        nameId, pdfName,
+        icId, pdfIc,
+        stateId, pdfState,
+        dateId, pdfDate,
+        monthId, pdfMonth,
+        yearId, pdfYear
+      });
+    });
+
+    return { formTitle, formGoal, referenceCode, pdfFilename, sections, signatures };
+  }
+
+  function buildStrictPrompt(struct) {
+    // Strict baseline clause ensures ChatGPT uses exact reference
+    let p = `Use the Credit/Debit Card web form filler at ${struct.referenceCode} as the strict baseline. `;
+    p += `Replicate its HTML structure, CSS styling, responsive layout and all JavaScript behavior (autosave to localStorage, signature popup UI and storage, PDF export/fill behavior, reset) 1:1.\n\n`;
+    p += `**Goal:** ${struct.formGoal || struct.formTitle}\n\n`;
+    p += `**New Form:** ${struct.formTitle}\n\n`;
+    p += `**PDF Template:** ${struct.pdfFilename || '(not provided)'}\n\n`;
+
+    p += `**Field-to-PDF Mapping (full):**\n`;
+    struct.sections.forEach((sec, si) => {
+      p += `- Section: ${sec.sectionTitle}\n`;
+      sec.fields.forEach(f => {
+        p += `  • ${f.label} → type="${f.type}", id="${f.htmlId}", pdf="${f.pdfField || ''}"`;
+        if (f.options) p += `, options=[${f.options.split(',').map(s=>s.trim()).filter(Boolean).join(', ')}]`;
+        if (f.arrangement) p += `, arrangement="${f.arrangement}"`;
+        p += `\n`;
+      });
+    });
+
+    if (struct.signatures.length) {
+      p += `\n**Signature Sections (composite blocks):**\n`;
+      struct.signatures.forEach(sig=>{
+        p += `- ${sig.label}\n`;
+        p += `  • Signature Pad → id="${sig.sigId}", pdf="${sig.pdfSig}"\n`;
+        p += `  • Name → id="${sig.nameId}", pdf="${sig.pdfName}"\n`;
+        p += `  • IC No → id="${sig.icId}", pdf="${sig.pdfIc}"\n`;
+        p += `  • State → id="${sig.stateId}", pdf="${sig.pdfState}"\n`;
+        p += `  • Date → id="${sig.dateId}", pdf="${sig.pdfDate}"\n`;
+        p += `  • Month → id="${sig.monthId}", pdf="${sig.pdfMonth}"\n`;
+        p += `  • Year → id="${sig.yearId}", pdf="${sig.pdfYear}"\n`;
+      });
+    }
+
+    p += `\n**Requirements (must follow exactly):**\n`;
+    p += `1. Keep CSS identical to the reference (do not re-style). Copy classes and layout where applicable.\n`;
+    p += `2. Keep JavaScript behavior identical: all inputs and selects autosave to localStorage with a clear namespace; signature popup should save both vector paths and PNG data URL; Clear/Undo features preserved.\n`;
+    p += `3. The output MUST be a single standalone HTML file (with embedded CSS and JS) that, when opened, presents the new form and supports filling + exporting to PDF.\n`;
+    p += `4. Include a clearly labelled mapping object in the JS (e.g., const PDF_MAP = { 'htmlId': 'PDFFieldName', ... }) so the PDF-export logic can use it directly.\n`;
+    p += `5. For signatures, include the composite block (Name + IC + State + Date/Month/Year + Signature Pad). All fields autosave and map to PDF.\n\n`;
+
+    p += `⚠️ Output: Provide the complete HTML file only (no extra commentary). The HTML must be ready to save as a .html file and test.\n`;
+    return p;
+  }
+
+  function buildSuperPrompt(struct) {
+    // a "super-prompt" that asks ChatGPT to produce the whole HTML file
+    const strict = buildStrictPrompt(struct);
+    let sp = strict + '\n\nNow generate the full HTML file. The file should include:\n';
+    sp += '- Embedded CSS copied or functionally identical to the reference. (If the reference contains external resources, inline the relevant CSS/JS into the single file.)\n';
+    sp += '- All JavaScript necessary for autosave, signature popup, PDF mapping, and PDF generation using pdf-lib (or compatible approach) inlined.\n';
+    sp += '- A JS constant named PDF_MAP mapping HTML IDs to PDF field names (based on the Field-to-PDF Mapping above).\n';
+    sp += '- Use the provided HTML IDs exactly. Add any helper IDs/classes needed for signature tiles but keep naming consistent.\n';
+    sp += '\nFinally, return ONLY the HTML file content enclosed within triple backticks (```html) so it can be copied directly.\n';
+    return sp;
+  }
 
   document.getElementById('generatePromptBtn').addEventListener('click', () => {
-    let prompt = `**Goal:** ${document.getElementById('formGoal').value}\n`;
-    prompt += `**Core Requirements:**\n- Use the same CSS styling and responsive layout as the reference code.\n- Implement the custom signature pad functionality and autosave logic.\n\n`;
-    prompt += `**Reference Code:** ${document.getElementById('referenceCode').value}\n\n`;
-    prompt += `**New Form Requirements:**\n\n`;
-
-    // UI Layout
-    prompt += `**UI Layout & Fields:**\n`;
-    document.querySelectorAll('#sectionsContainer .section').forEach(sectionDiv => {
-      const title = sectionDiv.querySelector('.sectionTitle').value;
-      prompt += `- **Section: ${title}**\n`;
-      sectionDiv.querySelectorAll('.field-group').forEach(fieldDiv => {
-        const label = fieldDiv.querySelector('.fieldLabel').value;
-        const htmlId = fieldDiv.querySelector('.htmlId').value;
-        const pdfField = fieldDiv.querySelector('.pdfField').value;
-        const type = fieldDiv.querySelector('.fieldType').value;
-        const arrangement = fieldDiv.querySelector('.fieldArrangement').value;
-        prompt += `  - **${label}:** ${type} input.`;
-        if (arrangement) prompt += ` Arrangement / Options: ${arrangement}.`;
-        if (htmlId) prompt += ` HTML ID: \`${htmlId}\`.`;
-        if (pdfField) prompt += ` Maps to PDF field: \`"${pdfField}"\`.`;
-        prompt += `\n`;
-      });
-      prompt += `\n`;
-    });
-
-    // Signatures
-    prompt += `**Signature Pad Details:**\n`;
-    document.querySelectorAll('#signaturesContainer .field-group').forEach(sigDiv => {
-      const title = sigDiv.querySelector('.sigTitle').value;
-      prompt += `- **${title}**\n`;
-    });
-    prompt += `\n`;
-
-    // PDF Mapping
-    prompt += `**PDF Mapping:**\n`;
-    prompt += `- PDF File: ${document.getElementById('pdfFilename').value}\n`;
-    prompt += `  (Mapping details are included with each field in the "UI Layout & Fields" section above.)\n\n`;
-
+    const struct = collectStructure();
+    const prompt = buildStrictPrompt(struct);
     document.getElementById('promptOutput').value = prompt;
   });
 
-  // Initialize first section with one field
-  const firstSection = addSection();
-  addField(firstSection.querySelector('.fieldsContainer'));
-  // Initialize one signature field
-  addSignatureField();
+  document.getElementById('generateCodePromptBtn').addEventListener('click', () => {
+    const struct = collectStructure();
+    const superPrompt = buildSuperPrompt(struct);
+    document.getElementById('promptOutput').value = superPrompt;
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const txt = document.getElementById('promptOutput').value;
+    if(!txt) return alert('Nothing to copy');
+    try {
+      await navigator.clipboard.writeText(txt);
+      alert('Copied to clipboard');
+    } catch(e) {
+      alert('Copy failed — select and copy manually');
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('promptOutput').value = '';
+  });
+
+  /* helpers */
+  function slugify(s='') {
+    return s.toLowerCase().replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_');
+  }
+  function escapeHtml(s='') {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  }
+
 });
 </script>
 </body>
