@@ -2,654 +2,151 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Prompt Generator with Signature Sections</title>
+<title>Form Filler Prompt Generator</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  :root{--bg:#f6f7f9;--card:#fff;--accent:#007aff;--muted:#666;--line:#e9e9ee}
-  *{box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111;margin:16px}
-  .wrap{max-width:1100px;margin:0 auto}
-  header{margin-bottom:12px}
-  h1{color:var(--accent);margin:0 0 8px;font-size:20px}
-  p.small{margin:0;color:var(--muted);font-size:13px}
-
-  .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.06);margin-bottom:16px;border:1px solid var(--line)}
-  label{display:block;margin-top:8px;font-weight:600;font-size:13px}
-  input[type=text], input[type=number], select, textarea{
-    width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;margin-top:6px;font-size:14px;background:#fff
+  :root {
+    --bg:#f6f7f9; --card:#fff; --accent:#007aff; --muted:#666;
   }
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
-  .row .flex{flex:1}
-  button{background:var(--accent);color:#fff;border:0;padding:9px 12px;border-radius:10px;cursor:pointer}
-  button.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
-  .muted{color:var(--muted);font-size:13px}
-  .field-list{margin-top:8px}
-  .field-card{border:1px dashed #e0e0e6;padding:10px;border-radius:8px;margin-top:8px;position:relative;background:#fbfbfd}
-  .remove-btn{position:absolute;right:8px;top:8px;background:#ff6b6b;color:#fff;border:none;border-radius:6px;padding:4px 6px;cursor:pointer}
-  .small{font-size:13px;color:var(--muted)}
-  .output{width:100%;height:420px;border-radius:8px;border:1px solid #ddd;margin-top:10px;padding:12px;font-family:monospace;white-space:pre-wrap;overflow:auto;background:#fff}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  @media (max-width:820px){ .cols{grid-template-columns:1fr} }
+  * { box-sizing:border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { margin:0; background:var(--bg); color:#000; }
+  header { background:var(--accent); color:#fff; padding:1rem; text-align:center; }
+  main { max-width:800px; margin:2rem auto; background:var(--card); padding:1.5rem; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+  h2 { margin-top:0; }
+  label { display:block; margin:.8rem 0 .3rem; font-weight:500; }
+  input[type=text], select, textarea, input[type=number] {
+    width:100%; padding:.6rem; border:1px solid #ccc; border-radius:8px;
+  }
+  textarea { height:120px; }
+  button { background:var(--accent); color:#fff; border:0; padding:.6rem 1.2rem; border-radius:8px; cursor:pointer; margin-top:1rem; }
+  .output { margin-top:2rem; padding:1rem; background:#f0f0f0; border-radius:8px; white-space:pre-wrap; font-family:monospace; }
+  .row { display:flex; gap:1rem; }
+  .row > div { flex:1; }
+  .sig-pad { border:1px solid #aaa; width:100%; height:120px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Prompt Generator — with Signature Sections</h1>
-    <p class="small">Build a ChatGPT prompt or generate a full standalone filler form. Signature sections generate composite blocks: Name, IC, State, Date/Month/Year, + Signature Pad.</p>
-  </header>
+<header>
+  <h1>Form Filler Prompt Generator</h1>
+</header>
+<main>
+  <h2>Define a Field</h2>
+  <label>Label</label>
+  <input type="text" id="fieldLabel" placeholder="e.g. Policy Number" />
 
-  <section class="card" id="mainConfig">
-    <label>Form Title
-      <input type="text" id="formTitle" placeholder="e.g., Nomination Form">
-    </label>
-    <label>Reference Code (pastebin link or full HTML)
-      <input type="text" id="referenceCode" placeholder="https://pastebin.com/dN7wNJhf (recommended)">
-    </label>
-    <label>PDF Filename (optional)
-      <input type="text" id="pdfFilename" placeholder="e.g., Nomination_Form_fillable.pdf">
-    </label>
-  </section>
+  <label>Input Type</label>
+  <select id="fieldType">
+    <option value="text">Text</option>
+    <option value="select">Dropdown</option>
+    <option value="radio">Radio</option>
+    <option value="signature">Signature Section</option>
+  </select>
 
-  <section class="card">
-    <h3>Sections & Static Fields</h3>
-    <div class="muted">Add normal (non-signature) fields — you can mark them repeatable as well.</div>
+  <div id="optionsBlock" style="display:none;">
+    <label>Options (comma-separated)</label>
+    <input type="text" id="fieldOptions" placeholder="e.g. Single, Married, Divorced" />
+  </div>
 
-    <div class="row" style="margin-top:12px">
-      <input type="text" id="newLabel" placeholder="Label (e.g., Proposed Insured)" class="flex">
-      <input type="text" id="newId" placeholder="HTML ID (e.g., proposed_insured)">
-      <input type="text" id="newPdf" placeholder="PDF field name (e.g., ProposedInsured)">
-    </div>
-
-    <div class="row">
-      <select id="newType" style="width:220px">
-        <option value="text">Text</option>
-        <option value="textarea">Textarea</option>
-        <option value="number">Number</option>
-        <option value="date">Date</option>
-        <option value="select">Dropdown (options required)</option>
-        <option value="radio">Radio (options required)</option>
+  <div id="repeatBlock" style="display:none;">
+    <label><input type="checkbox" id="repeatable" /> Repeatable Section?</label>
+    <div id="repeatModeBlock" style="display:none;">
+      <label>Mode</label>
+      <select id="repeatMode">
+        <option value="unlimited">Unlimited (+ Add button)</option>
+        <option value="fixed">Fixed Count</option>
       </select>
-      <input type="text" id="newOptions" placeholder="Options (comma separated)">
-      <label style="display:flex;align-items:center;gap:8px;margin-left:6px;">
-        <input type="checkbox" id="newRepeatable"> Repeatable
-      </label>
-      <select id="newRepeatMode" style="display:none;width:200px">
-        <option value="unlimited">Unlimited (add/remove at runtime)</option>
-        <option value="fixed">Fixed count</option>
-      </select>
-      <input type="number" id="newRepeatCount" min="1" value="1" style="display:none;width:90px">
-    </div>
-
-    <div style="margin-top:8px">
-      <button id="btnAddField">Add Field</button>
-    </div>
-
-    <div class="field-list" id="fieldsList"></div>
-  </section>
-
-  <section class="card">
-    <h3>Signature Sections (composite)</h3>
-    <div class="muted">Each signature section includes: Signature pad + Name + IC + State + Date/Month/Year. Configure HTML IDs and PDF field names for every subfield.</div>
-
-    <div id="signatureForm" style="margin-top:12px">
-      <div class="row">
-        <input id="sigLabel" class="flex" placeholder="Section label (e.g., Signature of Life Insured)">
-        <input id="sigPrefix" placeholder="Prefix/ID base (e.g., life_insured)">
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="pdfSigField" placeholder="PDF field for signature image (png)">
-        <input id="pdfNameField" placeholder="PDF field for Name">
-        <input id="pdfIcField" placeholder="PDF field for IC">
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="pdfStateField" placeholder="PDF field for State">
-        <input id="pdfDateField" placeholder="PDF field for Date">
-        <input id="pdfMonthField" placeholder="PDF field for Month">
-        <input id="pdfYearField" placeholder="PDF field for Year">
-      </div>
-      <div style="margin-top:8px">
-        <button id="btnAddSignature">Add Signature Section</button>
+      <div id="repeatCountBlock" style="display:none;">
+        <label>How many repeats?</label>
+        <input type="number" id="repeatCount" min="1" value="1" />
       </div>
     </div>
+  </div>
 
-    <div id="signatureList" style="margin-top:12px"></div>
-  </section>
+  <button onclick="addField()">Add Field</button>
 
-  <section class="card">
-    <div class="row" style="align-items:center">
-      <button id="btnGeneratePrompt">Generate Strict Prompt</button>
-      <button id="btnGenerateSuper" class="secondary">Generate Super-Prompt (Request Full HTML)</button>
-      <button id="btnGenerateFormCode" class="secondary">Generate Full Form HTML</button>
-      <button id="btnClear" class="secondary">Clear Output</button>
-    </div>
-    <div class="muted" style="margin-top:8px">Output (copy the prompt or the generated full HTML):</div>
-    <pre id="output" class="output"></pre>
-  </section>
-</div>
+  <h2>Generated Code</h2>
+  <div class="output" id="output"></div>
+</main>
 
 <script>
-/* -------------------------
-   Data structures
-   ------------------------- */
-const fields = []; // normal fields
-const signatures = []; // signature sections
+let fields = [];
 
-/* -------------------------
-   UI wiring
-   ------------------------- */
-const newRepeatCheckbox = document.getElementById('newRepeatable');
-const newRepeatMode = document.getElementById('newRepeatMode');
-const newRepeatCount = document.getElementById('newRepeatCount');
-newRepeatCheckbox.addEventListener('change', ()=> {
-  newRepeatMode.style.display = newRepeatCheckbox.checked ? '' : 'none';
-  newRepeatCount.style.display = (newRepeatCheckbox.checked && newRepeatMode.value==='fixed') ? '' : 'none';
-});
-newRepeatMode.addEventListener('change', () => {
-  newRepeatCount.style.display = (newRepeatMode.value==='fixed') ? '' : 'none';
+document.getElementById("fieldType").addEventListener("change", function() {
+  document.getElementById("optionsBlock").style.display =
+    (this.value === "select" || this.value === "radio") ? "block" : "none";
+  document.getElementById("repeatBlock").style.display =
+    (this.value !== "signature") ? "block" : "none";
 });
 
-document.getElementById('btnAddField').addEventListener('click', ()=>{
-  const label = document.getElementById('newLabel').value.trim();
-  const htmlId = document.getElementById('newId').value.trim() || slugify(label);
-  const pdf = document.getElementById('newPdf').value.trim();
-  const type = document.getElementById('newType').value;
-  const options = document.getElementById('newOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const repeatable = document.getElementById('newRepeatable').checked;
-  const repeatMode = repeatable ? newRepeatMode.value : null;
-  const repeatCount = (repeatable && repeatMode==='fixed') ? parseInt(newRepeatCount.value,10) : null;
-
-  if(!label || !htmlId){ alert('Label and HTML ID required'); return; }
-  fields.push({label, htmlId, pdf, type, options, repeatable, repeatMode, repeatCount});
-  renderFieldsList();
-  // clear inputs
-  document.getElementById('newLabel').value=''; document.getElementById('newId').value=''; document.getElementById('newPdf').value=''; document.getElementById('newOptions').value='';
-  document.getElementById('newRepeatable').checked=false; newRepeatMode.style.display='none'; newRepeatCount.style.display='none';
+document.getElementById("repeatable").addEventListener("change", function() {
+  document.getElementById("repeatModeBlock").style.display = this.checked ? "block" : "none";
 });
 
-function renderFieldsList(){
-  const el = document.getElementById('fieldsList'); el.innerHTML='';
-  fields.forEach((f, idx) => {
-    const div = document.createElement('div'); div.className='field-card';
-    div.innerHTML = `
-      <button class="remove-btn" data-idx="${idx}">x</button>
-      <div><strong>${escapeHtml(f.label)}</strong> — id: <code>${f.htmlId}</code> — type: ${f.type} ${f.repeatable?` — repeat: ${f.repeatMode}${f.repeatMode==='fixed'?` (${f.repeatCount})`:''}`:''}</div>
-      <div class="small">pdf: ${escapeHtml(f.pdf || '')} ${f.options && f.options.length?` — options: ${f.options.join(', ')}`:''}</div>
-    `;
-    el.appendChild(div);
-    div.querySelector('.remove-btn').addEventListener('click', (e)=>{
-      fields.splice(idx,1); renderFieldsList();
-    });
-  });
-}
-
-/* signature add */
-document.getElementById('btnAddSignature').addEventListener('click', ()=>{
-  const label = document.getElementById('sigLabel').value.trim();
-  const prefix = document.getElementById('sigPrefix').value.trim() || slugify(label);
-  const pdfSig = document.getElementById('pdfSigField').value.trim();
-  const pdfName = document.getElementById('pdfNameField').value.trim();
-  const pdfIc = document.getElementById('pdfIcField').value.trim();
-  const pdfState = document.getElementById('pdfStateField').value.trim();
-  const pdfDate = document.getElementById('pdfDateField').value.trim();
-  const pdfMonth = document.getElementById('pdfMonthField').value.trim();
-  const pdfYear = document.getElementById('pdfYearField').value.trim();
-
-  if(!label){ alert('Signature section label required'); return; }
-
-  signatures.push({
-    label, prefix,
-    pdfSig, pdfName, pdfIc, pdfState, pdfDate, pdfMonth, pdfYear
-  });
-  renderSignatures();
-  // clear
-  document.getElementById('sigLabel').value=''; document.getElementById('sigPrefix').value='';
-  document.getElementById('pdfSigField').value=''; document.getElementById('pdfNameField').value=''; document.getElementById('pdfIcField').value='';
-  document.getElementById('pdfStateField').value=''; document.getElementById('pdfDateField').value=''; document.getElementById('pdfMonthField').value=''; document.getElementById('pdfYearField').value='';
+document.getElementById("repeatMode").addEventListener("change", function() {
+  document.getElementById("repeatCountBlock").style.display =
+    this.value === "fixed" ? "block" : "none";
 });
 
-function renderSignatures(){
-  const el = document.getElementById('signatureList'); el.innerHTML='';
-  signatures.forEach((s, idx) => {
-    const div = document.createElement('div'); div.className='field-card';
-    div.innerHTML = `
-      <button class="remove-btn" data-idx="${idx}">x</button>
-      <div><strong>${escapeHtml(s.label)}</strong> — prefix: <code>${s.prefix}</code></div>
-      <div class="small">pdfSig: ${escapeHtml(s.pdfSig)} | pdfName: ${escapeHtml(s.pdfName)} | pdfIC: ${escapeHtml(s.pdfIc)} | pdfState: ${escapeHtml(s.pdfState)}</div>
-      <div class="small">pdfDate: ${escapeHtml(s.pdfDate)} | pdfMonth: ${escapeHtml(s.pdfMonth)} | pdfYear: ${escapeHtml(s.pdfYear)}</div>
-    `;
-    el.appendChild(div);
-    div.querySelector('.remove-btn').addEventListener('click', ()=>{ signatures.splice(idx,1); renderSignatures(); });
-  });
-}
+function addField() {
+  const label = document.getElementById("fieldLabel").value.trim();
+  const type = document.getElementById("fieldType").value;
+  const options = document.getElementById("fieldOptions").value.trim();
+  const repeatable = document.getElementById("repeatable").checked;
+  const repeatMode = document.getElementById("repeatMode").value;
+  const repeatCount = document.getElementById("repeatCount").value;
 
-/* -------------------------
-   Prompt generation
-   ------------------------- */
-function collectStructure(){
-  const formTitle = document.getElementById('formTitle').value.trim() || 'Generated Form';
-  const referenceCode = document.getElementById('referenceCode').value.trim() || 'https://pastebin.com/dN7wNJhf';
-  const pdfFilename = document.getElementById('pdfFilename').value.trim() || '';
-  return { formTitle, referenceCode, pdfFilename, fields: JSON.parse(JSON.stringify(fields)), signatures: JSON.parse(JSON.stringify(signatures)) };
-}
+  let field = { label, type, options: options.split(",").map(o=>o.trim()).filter(Boolean) };
 
-function buildStrictPrompt(struct){
-  let p = `Use the Credit/Debit Card web form filler at ${struct.referenceCode} as the strict baseline. Replicate its HTML structure, CSS styling, responsive layout and all JavaScript behavior (autosave to localStorage, signature popup UI and storage, PDF export/fill behavior, reset) 1:1.\n\n`;
-  p += `Goal: ${struct.formTitle}\n\nPDF Template: ${struct.pdfFilename || '(not provided)'}\n\n`;
-  p += `Field-to-PDF mapping:\n`;
-  struct.fields.forEach(sec => {
-    p += ` - ${sec.label} => id="${sec.htmlId}", type=${sec.type}, pdf="${sec.pdf || ''}"`;
-    if(sec.options && sec.options.length) p += `, options=[${sec.options.join(', ')}]`;
-    if(sec.repeatable) p += `, repeatable=${sec.repeatMode}${sec.repeatMode==='fixed'?`(${sec.repeatCount})`:''}`;
-    p += `\n`;
-  });
-  if(struct.signatures.length){
-    p += `\nSignature sections:\n`;
-    struct.signatures.forEach(s=>{
-      p += ` - ${s.label} (prefix: ${s.prefix})\n`;
-      p += `    • signature png -> id="${s.prefix}_sig", pdf="${s.pdfSig}"\n`;
-      p += `    • name -> id="${s.prefix}_name", pdf="${s.pdfName}"\n`;
-      p += `    • ic -> id="${s.prefix}_ic", pdf="${s.pdfIc}"\n`;
-      p += `    • state -> id="${s.prefix}_state", pdf="${s.pdfState}"\n`;
-      p += `    • day/month/year -> ids="${s.prefix}_day, ${s.prefix}_month, ${s.prefix}_year" -> pdfs="${s.pdfDate},${s.pdfMonth},${s.pdfYear}"\n`;
-    });
+  if (repeatable) {
+    field.repeatable = true;
+    field.repeatMode = repeatMode;
+    if (repeatMode === "fixed") field.repeatCount = parseInt(repeatCount);
   }
-  p += `\nRequirements (must follow exactly):\n1) Keep styling + layout identical to reference.\n2) Keep JavaScript behavior identical: autosave, signature pad (store png + vector), reset, PDF mapping.\n3) Return a single standalone HTML file (embedded CSS+JS) ready to save as .html.\n\n⚠ Return only the HTML file content (no extra commentary).\n`;
-  return p;
+
+  fields.push(field);
+  renderOutput();
+  document.getElementById("fieldLabel").value = "";
+  document.getElementById("fieldOptions").value = "";
+  document.getElementById("repeatable").checked = false;
+  document.getElementById("repeatModeBlock").style.display="none";
+  document.getElementById("repeatCountBlock").style.display="none";
 }
 
-function buildSuperPrompt(struct){
-  let s = buildStrictPrompt(struct);
-  s += `\nNow generate the complete HTML file. Include a JS constant PDF_MAP mapping HTML IDs to PDF fields. Inline the signature pad implementation (vector + png), autosave logic, and pdf-lib usage for PDF output. Return ONLY the HTML content enclosed in triple backticks labeled as HTML.\n`;
-  return s;
-}
-
-document.getElementById('btnGeneratePrompt').addEventListener('click', ()=>{
-  const struct = collectStructure(); document.getElementById('output').textContent = buildStrictPrompt(struct);
-});
-document.getElementById('btnGenerateSuper').addEventListener('click', ()=>{
-  const struct = collectStructure(); document.getElementById('output').textContent = buildSuperPrompt(struct);
-});
-
-/* -------------------------
-   Generate full form HTML (standalone)
-   ------------------------- */
-function generateFormHTML(struct){
-  // helper to build text inputs for a field (handles repeatable expansions as static output)
-  function renderFieldStatic(f, idxSuffix=''){
-    const id = f.htmlId + (idxSuffix?`_${idxSuffix}`:'');
-    if(f.type === 'text' || f.type === 'number' || f.type === 'date'){
-      return `<label>${escapeHtml(f.label)}\n  <input id="${id}" data-pdf="${escapeHtml(f.pdf||'')}" />\n</label>\n`;
-    } else if(f.type === 'textarea'){
-      return `<label>${escapeHtml(f.label)}\n  <textarea id="${id}" data-pdf="${escapeHtml(f.pdf||'')}"></textarea>\n</label>\n`;
-    } else if(f.type === 'select'){
-      const opts = (f.options||[]).map(o=>`<option>${escapeHtml(o)}</option>`).join('');
-      return `<label>${escapeHtml(f.label)}\n  <select id="${id}" data-pdf="${escapeHtml(f.pdf||'')}">${opts}</select>\n</label>\n`;
-    } else if(f.type === 'radio'){
-      return `<label>${escapeHtml(f.label)}</label>\n<div>${(f.options||[]).map(o=>`<label><input type="radio" name="${id}" value="${escapeHtml(o)}" data-pdf="${escapeHtml(f.pdf||'')}"> ${escapeHtml(o)}</label>`).join(' ')}</div>\n`;
-    } else {
-      // fallback
-      return `<label>${escapeHtml(f.label)}\n  <input id="${id}" data-pdf="${escapeHtml(f.pdf||'')}" />\n</label>\n`;
+function renderOutput() {
+  let html = `<form>\n`;
+  fields.forEach((f,i)=>{
+    if (f.type==="text") {
+      html += `  <label>${f.label}<input type="text" id="field${i}"></label>\n`;
     }
-  }
-
-  // Render a signature composite block (Name, IC, State, Day, Month, Year, Canvas)
-  function renderSignatureBlock(s){
-    const p = s.prefix;
-    return `<fieldset style="border:1px solid #e5e7eb;padding:10px;border-radius:10px;margin-bottom:12px">
-  <legend style="font-weight:600">${escapeHtml(s.label)}</legend>
-
-  <label>Full Name
-    <input id="${p}_name" data-pdf="${escapeHtml(s.pdfName||'')}" />
-  </label>
-
-  <label>IC / ID Number
-    <input id="${p}_ic" data-pdf="${escapeHtml(s.pdfIc||'')}" />
-  </label>
-
-  <label>State
-    <input id="${p}_state" data-pdf="${escapeHtml(s.pdfState||'')}" />
-  </label>
-
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <label style="flex:1">Day
-      <select id="${p}_day" data-pdf="${escapeHtml(s.pdfDate||'')}">${Array.from({length:31},(_,i)=>`<option>${i+1}</option>`).join('')}</select>
-    </label>
-    <label style="flex:1">Month
-      <select id="${p}_month" data-pdf="${escapeHtml(s.pdfMonth||'')}">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m=>`<option>${m}</option>`).join('')}</select>
-    </label>
-    <label style="flex:1">Year
-      <select id="${p}_year" data-pdf="${escapeHtml(s.pdfYear||'')}">${(() => {
-        const now = new Date().getFullYear();
-        let out = '';
-        for(let y = now; y >= now - 50; y--) out += `<option>${y}</option>`;
-        return out;
-      })()}</select>
-    </label>
-  </div>
-
-  <div style="margin-top:10px">
-    <div style="border:1px dashed #c8c8cc;border-radius:8px;padding:8px;">
-      <div style="margin-bottom:6px"><strong>Signature</strong></div>
-      <canvas id="${p}_sig_canvas" style="width:100%;height:160px;background:#fff;border-radius:8px;border:1px solid #ddd;touch-action:none"></canvas>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button type="button" data-action="clear" data-target="${p}_sig_canvas">Clear</button>
-        <button type="button" data-action="undo" data-target="${p}_sig_canvas">Undo</button>
-      </div>
-    </div>
-    <div class="small" style="margin-top:8px">Signature will be saved to localStorage as PNG and can be embedded into PDF.</div>
-  </div>
-</fieldset>\n`;
-  }
-
-  // Begin building full HTML
-  const htmlParts = [];
-  htmlParts.push(`<!doctype html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(struct.formTitle||'Generated Form')}</title>
-<link rel="stylesheet" href="">
-<style>
-  body{font-family:-apple-system,Segoe UI,Roboto,Arial;margin:18px;background:#f6f7f9;color:#111}
-  .card{background:#fff;padding:14px;border-radius:12px;border:1px solid #eee;max-width:900px;margin:0 auto}
-  label{display:block;margin-top:8px}
-  input,select,textarea{width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;margin-top:6px}
-  button{background:#007aff;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
-  .muted{color:#666;font-size:13px}
-</style>
-</head><body>
-<div class="card">
-  <h2>${escapeHtml(struct.formTitle)}</h2>
-  <div class="muted">Autosave: all inputs are saved to localStorage. Signatures persist as PNG + vector.</div>
-  <form id="generatedForm" onsubmit="return false;">
-`);
-
-  // Fields (normal)
-  struct.fields.forEach(f=>{
-    if(f.repeatable){
-      if(f.repeatMode==='unlimited'){
-        // output container with add button and a template for JS
-        htmlParts.push(`<div id="${f.htmlId}_container" style="margin-top:12px"><label style="font-weight:700">${escapeHtml(f.label)}</label>
-  <div class="${f.htmlId}_row" data-index="1">
-    ${renderFieldStatic(f, '1')}
-    <button type="button" onclick="removeRow(this)" style="background:#ff6b6b;margin-top:8px">Remove</button>
-  </div>
-  <div style="margin-top:8px">
-    <button type="button" id="add_${f.htmlId}">+ Add ${escapeHtml(f.label)}</button>
-  </div>
-</div>
-`);
-        // add JS template appended later
-      } else {
-        // fixed count: render N copies
-        for(let i=1;i<= (f.repeatCount || 1); i++){
-          htmlParts.push(`<div class="${f.htmlId}_row" style="margin-top:10px">${renderFieldStatic(f, i)}</div>`);
-        }
-      }
-    } else {
-      htmlParts.push(`<div style="margin-top:10px">${renderFieldStatic(f)}</div>`);
+    else if (f.type==="select") {
+      html += `  <label>${f.label}<select id="field${i}">\n`;
+      f.options.forEach(opt=>{ html += `    <option value="${opt}">${opt}</option>\n`; });
+      html += `  </select></label>\n`;
     }
-  });
-
-  // Signatures
-  struct.signatures.forEach(s => {
-    htmlParts.push(renderSignatureBlock(s));
-  });
-
-  // Buttons & PDF map placeholder
-  htmlParts.push(`
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button id="btnSaveLocal" type="button">Save Now</button>
-      <button id="btnReset" type="button" style="background:#999">Reset All</button>
-      <button id="btnDownloadPdf" type="button">Fill & Download PDF</button>
-    </div>
-
-  </form>
-</div>
-
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script>
-/* Generated form JS: autosave, signature pad class, dynamic add/remove for repeatable fields, PDF_MAP placeholder */
-/* ---------- Helpers ---------- */
-function slugify(s=''){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
-function $(id){ return document.getElementById(id); }
-const NS = 'generatedForm_v1';
-
-/* ---------- Autosave for inputs/selects/textarea ---------- */
-function saveFormField(id){
-  const el = document.getElementById(id);
-  if(!el) return;
-  if(el.type === 'checkbox' || el.type === 'radio') {
-    localStorage.setItem(NS+':'+id, el.checked ? '1' : '0');
-  } else {
-    localStorage.setItem(NS+':'+id, el.value ?? '');
-  }
-}
-function restoreForm(){
-  document.querySelectorAll('#generatedForm input[id], #generatedForm select[id], #generatedForm textarea[id]').forEach(el=>{
-    const id = el.id;
-    const val = localStorage.getItem(NS+':'+id);
-    if(val === null) return;
-    if(el.type === 'checkbox' || el.type === 'radio') el.checked = val === '1';
-    else el.value = val;
-  });
-}
-document.addEventListener('input', (e)=>{
-  const el = e.target;
-  if(!el || !el.id) return;
-  saveFormField(el.id);
-});
-
-/* ---------- SimpleSignature class (vector + png + autosave) ---------- */
-class SimpleSignature {
-  constructor(canvasId, storageKey){
-    this.canvas = document.getElementById(canvasId);
-    if(!this.canvas) return;
-    this.ctx = this.canvas.getContext('2d');
-    this.storageKey = storageKey;
-    this.paths = [];
-    this.current = [];
-    this.dpr = Math.max(1, window.devicePixelRatio || 1);
-    this.isDrawing = false;
-    this._resize();
-    this._bind();
-    this._restore();
-  }
-  _resize(){
-    const rect = this.canvas.getBoundingClientRect();
-    this.canvas.width = Math.floor(rect.width * this.dpr);
-    this.canvas.height = Math.floor(rect.height * this.dpr);
-    this.ctx.scale(this.dpr, this.dpr);
-    this._redraw();
-  }
-  _bind(){
-    window.addEventListener('resize', ()=>this._resize());
-    this.canvas.addEventListener('pointerdown', (e)=>{ this.canvas.setPointerCapture(e.pointerId); this.isDrawing=true; this.current=[this._pos(e)]; this._redraw(); });
-    this.canvas.addEventListener('pointermove', (e)=>{ if(!this.isDrawing) return; this.current.push(this._pos(e)); this._redraw(); });
-    this.canvas.addEventListener('pointerup', (e)=>{ if(!this.isDrawing) return; this.isDrawing=false; this.paths.push(this.current); this.current=[]; this._persist(); });
-    this.canvas.addEventListener('pointercancel', ()=>{ this.isDrawing=false; });
-  }
-  _pos(e){ const r=this.canvas.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
-  _redraw(){
-    this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-    this.ctx.save(); this.ctx.lineCap='round'; this.ctx.lineJoin='round'; this.ctx.lineWidth = 2; this.ctx.strokeStyle='#000';
-    const draw = (p)=>{ if(!p||p.length===0) return; if(p.length===1){ this.ctx.beginPath(); this.ctx.arc(p[0].x,p[0].y,1,0,Math.PI*2); this.ctx.fill(); return; } this.ctx.beginPath(); this.ctx.moveTo(p[0].x,p[0].y); for(let i=1;i<p.length;i++) this.ctx.lineTo(p[i].x,p[i].y); this.ctx.stroke(); };
-    this.paths.forEach(draw); if(this.current.length) draw(this.current);
-    this.ctx.restore();
-  }
-  clear(){ this.paths=[]; this.current=[]; this._redraw(); this._persist(); }
-  undo(){ this.paths.pop(); this._redraw(); this._persist(); }
-  _persist(){ localStorage.setItem(NS+':sig:'+this.storageKey, JSON.stringify(this.paths)); localStorage.setItem(NS+':sig:'+this.storageKey+':png', this.canvas.toDataURL()); }
-  _restore(){ const raw = localStorage.getItem(NS+':sig:'+this.storageKey); if(raw){ try{ this.paths = JSON.parse(raw) || []; }catch(e){ this.paths=[]; } this._redraw(); } }
-  toDataURL(){ return this.canvas.toDataURL('image/png'); }
-}
-
-/* ---------- Dynamic add/remove rows for unlimited repeatable fields ---------- */
-function removeRow(btn){ btn.parentNode.remove(); } // simple removal
-
-/* For each field configured as unlimited repeatable: set up add button */
-(function setupRepeatables(){
-`);
-
-  // Add JS code to setup unlimited add buttons for fields configured as repeatable/unlimited
-  struct.fields.forEach(f => {
-    if(f.repeatable && f.repeatMode === 'unlimited'){
-      // generate template function JS to add rows
-      const template = `
-  // Setup repeatable ${f.htmlId}
-  (function(){
-    const containerId = '${f.htmlId}_container';
-    const addBtnId = 'add_${f.htmlId}';
-    let counter = 1;
-    const addBtn = document.getElementById(addBtnId);
-    if(addBtn){
-      addBtn.addEventListener('click', () => {
-        counter++;
-        const div = document.createElement('div');
-        div.className = '${f.htmlId}_row';
-        div.dataset.index = counter;
-        div.style.marginTop = '8px';
-        div.innerHTML = \`
-${renderSingleFieldHTMLForTemplate(f)}\n        <button type="button" onclick="removeRow(this)" style="background:#ff6b6b;margin-top:8px">Remove</button>\`;
-        document.getElementById(containerId).insertBefore(div, addBtn.parentNode);
+    else if (f.type==="radio") {
+      html += `  <fieldset><legend>${f.label}</legend>\n`;
+      f.options.forEach(opt=>{
+        html += `    <label><input type="radio" name="field${i}" value="${opt}"> ${opt}</label>\n`;
       });
+      html += `  </fieldset>\n`;
     }
-  })();
-`;
-      htmlParts.push(template);
+    else if (f.type==="signature") {
+      html += `  <fieldset><legend>${f.label}</legend>\n`;
+      html += `    <label>Name<input type="text" id="sigName${i}"></label>\n`;
+      html += `    <label>IC<input type="text" id="sigIC${i}"></label>\n`;
+      html += `    <label>State<input type="text" id="sigState${i}"></label>\n`;
+      html += `    <div class="row">\n`;
+      html += `      <div><label>Date<input type="number" id="sigDate${i}" min="1" max="31"></label></div>\n`;
+      html += `      <div><label>Month<input type="text" id="sigMonth${i}"></label></div>\n`;
+      html += `      <div><label>Year<input type="number" id="sigYear${i}" min="1900" max="2100"></label></div>\n`;
+      html += `    </div>\n`;
+      html += `    <canvas class="sig-pad" id="sigPad${i}"></canvas>\n`;
+      html += `  </fieldset>\n`;
     }
   });
-
-  // finish JS main and wire up signatures and autosave restore + PDF placeholder
-  htmlParts.push(`
-})(); // end setupRepeatables
-
-/* ---------- Instantiate signature pads ---------- */
-const signatureInstances = {};
-${struct.signatures.map(s => `signatureInstances['${s.prefix}'] = new SimpleSignature('${s.prefix}_sig_canvas','${s.prefix}');`).join('\n')}
-
-/* ---------- Restore form values ---------- */
-restoreForm();
-
-/* ---------- Wire signature buttons (clear/undo) ---------- */
-document.querySelectorAll('button[data-action]').forEach(btn=>{
-  const action = btn.dataset.action;
-  const target = btn.dataset.target;
-  btn.addEventListener('click', ()=>{
-    if(!target) return;
-    // target is canvas id e.g. prefix_sig_canvas
-    const prefix = target.replace('_sig_canvas','');
-    const inst = signatureInstances[prefix];
-    if(!inst) return;
-    if(action === 'clear') inst.clear();
-    if(action === 'undo') inst.undo();
-  });
-});
-
-/* ---------- Save & Reset ---------- */
-document.getElementById('btnSaveLocal').addEventListener('click', ()=>{ 
-  // save all inputs explicitly
-  document.querySelectorAll('#generatedForm [id]').forEach(el=>{ if(el.id){ localStorage.setItem(NS+':'+el.id, el.type === 'checkbox' ? (el.checked ? '1':'0') : (el.value||'')); }});
-  alert('Saved to localStorage');
-});
-document.getElementById('btnReset').addEventListener('click', ()=>{
-  if(!confirm('Reset all saved values and signatures?')) return;
-  // remove keys
-  document.querySelectorAll('#generatedForm [id]').forEach(el=>{
-    if(el.id) localStorage.removeItem(NS+':'+el.id);
-  });
-  // remove signatures
-  ${struct.signatures.map(s => `localStorage.removeItem(NS+':sig:${s.prefix}'); localStorage.removeItem(NS+':sig:${s.prefix}:png');`).join('\n  ')}
-  // reload
-  location.reload();
-});
-
-/* ---------- PDF mapping & download (skeleton) ---------- */
-const PDF_MAP = {
-${[...struct.fields.map(f=>`  "${f.htmlId}": "${f.pdf||''}"`), ...struct.signatures.map(s=>[
-    `  "${s.prefix}_name": "${s.pdfName||''}"`,
-    `  "${s.prefix}_ic": "${s.pdfIc||''}"`,
-    `  "${s.prefix}_state": "${s.pdfState||''}"`,
-    `  "${s.prefix}_day": "${s.pdfDate||''}"`,
-    `  "${s.prefix}_month": "${s.pdfMonth||''}"`,
-    `  "${s.prefix}_year": "${s.pdfYear||''}"`,
-    `  "${s.prefix}_sig": "${s.pdfSig||''}"`
-  ].join(',\n')).join(',\n')].join(',\n')}
-};
-
-/* Fill PDF and download — basic implementation: draws text and embeds signatures by XY mapping fallback.
-   NOTE: Replace XY coordinates with your template coordinates or set ACRO form field names if available.
-*/
-async function fillAndDownloadPDF(){
-  try{
-    const { PDFDocument, StandardFonts, rgb } = PDFLib;
-    // Attempt to fetch template if provided by user (must be same-origin or accessible)
-    let templateBytes = null;
-    const pdfFile = "${escapeHtml(struct.pdfFilename||'')}";
-    if(pdfFile){
-      try{
-        const res = await fetch(pdfFile);
-        if(res.ok) templateBytes = await res.arrayBuffer();
-      }catch(e){ console.warn('Template fetch failed', e); }
-    }
-    let pdfDoc;
-    if(templateBytes) pdfDoc = await PDFDocument.load(templateBytes);
-    else pdfDoc = await PDFDocument.create();
-    const pages = pdfDoc.getPages();
-    const page = pages[0] || pdfDoc.addPage([595,842]);
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    // Draw text values
-    for(const id in PDF_MAP){
-      const fieldName = PDF_MAP[id];
-      if(!fieldName) continue;
-      const el = document.getElementById(id);
-      if(!el) continue;
-      const val = el.type === 'radio' ? (document.querySelector('input[name="'+id+'"]:checked') ? document.querySelector('input[name="'+id+'"]:checked').value : '') : (el.value || '');
-      // Fallback: just draw on page (needs coordinates adjustment)
-      page.drawText(String(val), { x: 50, y: 700 - (Object.keys(PDF_MAP).indexOf(id) * 12), size:10, font });
-    }
-
-    // Embed signature images
-    for(const sfx in signatureInstances){
-      const inst = signatureInstances[sfx];
-      if(!inst) continue;
-      const png = localStorage.getItem(NS+':sig:'+sfx+':png') || inst.toDataURL();
-      if(!png) continue;
-      const img = await pdfDoc.embedPng(png);
-      const scaled = img.scale(0.5);
-      // Fallback coordinates (should be adjusted per template)
-      page.drawImage(img, { x: 300, y: 100, width: scaled.width, height: scaled.height });
-    }
-
-    const bytes = await pdfDoc.save();
-    const blob = new Blob([bytes], {type: 'application/pdf'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = '${escapeHtml((struct.formTitle||'filled-form').replace(/\s+/g,'_'))}.pdf'; a.click();
-    URL.revokeObjectURL(url);
-  }catch(err){
-    console.error(err); alert('PDF generation failed — check console for details.');
-  }
+  html += `</form>`;
+  document.getElementById("output").textContent = html;
 }
-
-document.getElementById('btnDownloadPdf').addEventListener('click', fillAndDownloadPDF);
-
-</script>
-</body></html>`);
-
-  return htmlParts.join('');
-}
-
-/* -------------------------
-   Wire up generate full HTML button
-   ------------------------- */
-document.getElementById('btnGenerateFormCode').addEventListener('click', ()=>{
-  const struct = collectStructure();
-  const html = generateFormHTML(struct);
-  document.getElementById('output').textContent = html;
-});
-
-/* Utility functions */
-function slugify(s=''){ return String(s||'').toLowerCase().replace(/[^\w]+/g,'_').replace(/^_|_$/g,''); }
-function escapeHtml(s=''){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>
